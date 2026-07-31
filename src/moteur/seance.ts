@@ -174,21 +174,27 @@ function choisirStructure(budgetSec: number, intensite: Intensite, court: boolea
   const reposSec = TEMPS_REPOS[intensite];
   const exoParBloc = court ? 3 : 4;
 
-  let meilleure: StructureBlocs | null = null;
-  let meilleurEcart = Infinity;
+  let meilleure: StructureBlocs = { nbBlocs: 1, exoParBloc, tours: 3, travailSec, reposSec };
+  let meilleurEcart = Math.abs(dureeBlocs(meilleure) - budgetSec);
 
   for (let nbBlocs = 1; nbBlocs <= 4; nbBlocs++) {
     for (let tours = 2; tours <= 6; tours++) {
       const candidate: StructureBlocs = { nbBlocs, exoParBloc, tours, travailSec, reposSec };
       const ecart = Math.abs(dureeBlocs(candidate) - budgetSec);
-      if (ecart < meilleurEcart - 1 || (ecart <= meilleurEcart + 1 && nbBlocs > (meilleure?.nbBlocs ?? 0))) {
+
+      // À une seconde près, deux découpages sont équivalents pour qui les
+      // exécute : on tranche alors en faveur du plus varié.
+      const nettementMieux = ecart < meilleurEcart - 1;
+      const equivalent = Math.abs(ecart - meilleurEcart) <= 1;
+
+      if (nettementMieux || (equivalent && nbBlocs > meilleure.nbBlocs)) {
         meilleure = candidate;
-        meilleurEcart = Math.min(ecart, meilleurEcart);
+        meilleurEcart = ecart;
       }
     }
   }
 
-  return meilleure ?? { nbBlocs: 1, exoParBloc, tours: 3, travailSec, reposSec };
+  return meilleure;
 }
 
 /* ------------------------------ Tirage ------------------------------- */
