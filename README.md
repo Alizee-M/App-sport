@@ -73,6 +73,10 @@ se coupent depuis le Journal.
 L'**échauffement et les étirements ciblent les zones réellement
 sollicitées** : pas de mobilisation d'épaules avant une séance de jambes.
 
+Un bouton **+15 s de repos** reste disponible pendant chaque récupération,
+autant de fois que nécessaire : une séance plus dure que prévu ne doit pas
+obliger à tout arrêter. Ça ne coûte ni XP ni progression.
+
 Le **repos s'ajuste à l'exercice qu'on vient de terminer** : on ne souffle
 pas aussi longtemps après des extensions de mollets qu'après des burpees.
 Il est redistribué à l'intérieur du bloc plutôt qu'ajouté, si bien que la

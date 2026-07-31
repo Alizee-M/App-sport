@@ -22,6 +22,9 @@ import type { ParamsPile } from '../navigation';
 
 type Props = NativeStackScreenProps<ParamsPile, 'Seance'>;
 
+/** Secondes accordées à chaque appui sur « rallonger le repos ». */
+const RALLONGE_SEC = 15;
+
 /**
  * L'exécution de la séance.
  *
@@ -44,12 +47,16 @@ export default function Seance({ navigation }: Props) {
   const [index, setIndex] = useState(0);
   const [ecoule, setEcoule] = useState(0);
   const [enPause, setEnPause] = useState(false);
+  /** Secondes ajoutées au repos en cours, quand la séance pique trop. */
+  const [rallonge, setRallonge] = useState(0);
   const cloture = useRef(false);
 
   const debut = useRef(Date.now());
   const cumul = useRef(0);
 
   const etape = etapes[index];
+  // Durée réelle de l'étape en cours : le repos peut avoir été rallongé.
+  const dureeEtape = etape ? etape.secondes + rallonge : 0;
 
   /* Chaque nouvelle étape repart d'un compteur neuf. Cet effet doit rester
    * déclaré avant celui du chronomètre : React exécute les effets dans
@@ -59,6 +66,7 @@ export default function Seance({ navigation }: Props) {
     cumul.current = 0;
     debut.current = Date.now();
     setEcoule(0);
+    setRallonge(0);
   }, [index]);
 
   useEffect(() => {
@@ -114,18 +122,18 @@ export default function Seance({ navigation }: Props) {
   /* Décompte des trois dernières secondes. */
   useEffect(() => {
     if (enPause || !etape) return;
-    const restant = Math.ceil(etape.secondes - ecoule);
+    const restant = Math.ceil(dureeEtape - ecoule);
     if (restant <= 3 && restant >= 1 && dernierBip.current !== restant) {
       dernierBip.current = restant;
       jouer('bip');
     }
-  }, [ecoule, etape, enPause, jouer]);
+  }, [ecoule, etape, dureeEtape, enPause, jouer]);
 
   // Fin d'étape : le temps imparti est écoulé.
   useEffect(() => {
     if (!etape || enPause) return;
-    if (ecoule >= etape.secondes) avancer();
-  }, [ecoule, etape, enPause, avancer]);
+    if (ecoule >= dureeEtape) avancer();
+  }, [ecoule, etape, dureeEtape, enPause, avancer]);
 
   const abandonner = useCallback(() => {
     Alert.alert(
@@ -176,8 +184,8 @@ export default function Seance({ navigation }: Props) {
 
   if (!seance || !etape) return <View style={styles.ecran} />;
 
-  const restant = Math.max(0, Math.ceil(etape.secondes - ecoule));
-  const progressionEtape = Math.min(1, ecoule / etape.secondes);
+  const restant = Math.max(0, Math.ceil(dureeEtape - ecoule));
+  const progressionEtape = Math.min(1, ecoule / dureeEtape);
   const couleur = couleurParGenre[etape.genre] ?? couleurs.accent;
   const enRepos = etape.genre === 'repos' || etape.genre === 'repos_bloc';
   const prescrit = etape.prescrit;
@@ -196,7 +204,7 @@ export default function Seance({ navigation }: Props) {
           {etape.contexte}
         </Text>
         <Text style={styles.restantTotal}>
-          {formaterChrono(secondesRestantes(etapes, index) - ecoule)} restant
+          {formaterChrono(secondesRestantes(etapes, index) + rallonge - ecoule)} restant
         </Text>
       </View>
       <View style={{ paddingHorizontal: espace.l }}>
@@ -243,6 +251,30 @@ export default function Seance({ navigation }: Props) {
             <Text style={styles.libelleSuivant}>ENSUITE</Text>
             <Text style={styles.nomSuivant}>{etape.suivant}</Text>
           </View>
+        ) : null}
+
+        {/* Une séance plus dure que prévu ne doit pas obliger à tout
+            arrêter : on s'accorde du repos en plus, autant de fois qu'il
+            le faut. Ça ne coûte ni XP ni progression. */}
+        {enRepos ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Ajouter ${RALLONGE_SEC} secondes de repos`}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setRallonge((actuelle) => actuelle + RALLONGE_SEC);
+              }}
+              style={({ pressed }) => [styles.boutonRallonge, pressed && { opacity: 0.75 }]}
+            >
+              <Text style={styles.boutonRallongeTexte}>+{RALLONGE_SEC} s de repos</Text>
+            </Pressable>
+            <Text style={styles.noteRallonge}>
+              {rallonge > 0
+                ? `${rallonge} s ajoutées. Aucune conséquence sur ton XP.`
+                : 'Trop dur ? Prends le temps qu\'il te faut.'}
+            </Text>
+          </>
         ) : null}
 
         {prescrit ? (
@@ -345,6 +377,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: espace.m,
   },
   dose: { ...texte.sousTitre, marginTop: espace.s },
+
+  boutonRallonge: {
+    marginTop: espace.l,
+    paddingVertical: espace.m,
+    paddingHorizontal: espace.xl,
+    borderRadius: rayon.rond,
+    borderWidth: 1,
+    borderColor: couleurs.repos,
+    backgroundColor: 'rgba(76,201,240,0.10)',
+  },
+  boutonRallongeTexte: { ...texte.corps, color: couleurs.repos, fontWeight: '800' },
+  noteRallonge: {
+    ...texte.minuscule,
+    color: couleurs.texteFaible,
+    marginTop: espace.s,
+    textAlign: 'center',
+  },
 
   encartSuivant: {
     marginTop: espace.xl,
