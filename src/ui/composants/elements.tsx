@@ -160,6 +160,19 @@ export function CarteModificateur({
             {Math.round((modificateur.bonusXp - 1) * 100)} % d'XP
           </Text>
         </View>
+        {/* Dire qui applique la règle évite de chercher en vain un
+            changement à l'écran — ou, à l'inverse, de croire que l'app
+            fera le travail à ta place. */}
+        <View style={styles.marqueurApplication}>
+          <Text
+            style={[
+              styles.marqueurApplicationTexte,
+              { color: modificateur.applique ? couleurs.succes : couleurs.texteFaible },
+            ]}
+          >
+            {modificateur.applique ? '⚙️ auto' : '🤝 sur\nl\'honneur'}
+          </Text>
+        </View>
         {onRetirer ? (
           <Pressable
             accessibilityRole="button"
@@ -341,6 +354,13 @@ const styles = StyleSheet.create({
   carteRegleNom: { ...texte.corps, color: couleurs.texte, fontWeight: '800' },
   carteRegleRarete: { ...texte.minuscule, marginTop: 2 },
   carteRegleDescription: { ...texte.petit, color: couleurs.texteDoux, lineHeight: 19 },
+  marqueurApplication: { alignItems: 'flex-end', maxWidth: 74 },
+  marqueurApplicationTexte: {
+    ...texte.minuscule,
+    fontSize: 10,
+    textAlign: 'right',
+    lineHeight: 13,
+  },
 
   ligneStat: {
     flexDirection: 'row',

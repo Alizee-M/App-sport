@@ -93,7 +93,7 @@ export default function Tirage({ navigation, route }: Props) {
         }
         onRetirerModificateur={(index) =>
           setSeance((actuelle) =>
-            actuelle ? retirerModificateur(actuelle, index, niveau, graineAleatoire()) : actuelle,
+            actuelle ? retirerModificateur(actuelle, index, options, graineAleatoire()) : actuelle,
           )
         }
         onLancer={() => {
@@ -253,6 +253,12 @@ function Apercu({
               <TitreSection>
                 {seance.modificateurs.length > 1 ? 'Règles du jour' : 'Règle du jour'}
               </TitreSection>
+              <Text style={styles.expliqueRegle}>
+                Une contrainte tirée au sort qui change la façon de jouer les mêmes exercices —
+                c'est ce qui empêche deux séances de se ressembler. Tu l'acceptes en échange
+                d'XP en plus. Celles marquées <Text style={styles.expliqueAuto}>⚙️ auto</Text>{' '}
+                sont déjà appliquées à la séance ci-dessous ; les autres tiennent sur ta parole.
+              </Text>
               <View style={{ gap: espace.m }}>
                 {seance.modificateurs.map((m, index) => (
                   <CarteModificateur
@@ -335,6 +341,14 @@ const styles = StyleSheet.create({
 
   etiquetteTirage: { ...texte.section, color: couleurs.accent, marginBottom: espace.s },
   metaLigne: { flexDirection: 'row', gap: espace.s, marginTop: espace.m, flexWrap: 'wrap' },
+
+  expliqueRegle: {
+    ...texte.petit,
+    color: couleurs.texteDoux,
+    lineHeight: 19,
+    marginBottom: espace.m,
+  },
+  expliqueAuto: { color: couleurs.succes, fontWeight: '700' },
 
   detailBloc: { ...texte.minuscule, color: couleurs.texteFaible },
   noteBoss: { ...texte.minuscule, color: couleurs.texteFaible, marginTop: espace.s, fontStyle: 'italic' },

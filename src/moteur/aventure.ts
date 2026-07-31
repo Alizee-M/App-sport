@@ -363,7 +363,10 @@ export function zoneDebloquee(zone: Zone, termines: string[]): boolean {
  * une séance plus longue ou plus intense que l'exigence passe toujours.
  */
 export function seanceValideNoeud(seance: Seance, noeud: Noeud): boolean {
-  if (seance.dureeEstimeeSec < noeud.exigence.dureeMin * 60 * 0.85) return false;
+  // On juge sur le temps demandé au tirage, pas sur la durée finale : une
+  // carte du jour qui raccourcit les repos rend la séance plus dure, elle
+  // ne doit pas faire perdre l'étape.
+  if (seance.dureeDemandeeMin < noeud.exigence.dureeMin) return false;
   if (seance.intensite < noeud.exigence.intensiteMin) return false;
   if (noeud.exigence.focus && seance.focus !== noeud.exigence.focus) return false;
   return true;

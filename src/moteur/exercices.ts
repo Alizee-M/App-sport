@@ -1,4 +1,4 @@
-import type { Exercice, Famille, Materiel, Phase } from './types';
+import type { Exercice, Famille, Materiel, Phase, ZoneCorps } from './types';
 
 /* ----------------------------------------------------------------------
  * Le deck d'exercices.
@@ -26,6 +26,7 @@ export const CATALOGUE: Exercice[] = [
     bruit: 'silencieux',
     consigne: 'Grands cercles avec les bras tendus, en avant puis en arrière.',
     astuce: 'Amplitude maximale, épaules relâchées.',
+    zones: ['epaules', 'poitrine'],
     niveauRequis: 1,
   },
   {
@@ -41,6 +42,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Mains sur les hanches, dessine des grands cercles avec le bassin.',
+    zones: ['hanches', 'tronc'],
     niveauRequis: 1,
   },
   {
@@ -57,6 +59,7 @@ export const CATALOGUE: Exercice[] = [
     bruit: 'silencieux',
     consigne: 'À quatre pattes, alterne dos rond et dos creux, lentement.',
     astuce: 'Synchronise : j\'expire en dos rond, j\'inspire en dos creux.',
+    zones: ['dos', 'tronc'],
     niveauRequis: 1,
   },
   {
@@ -72,6 +75,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Appuie-toi d\'une main et balance la jambe d\'avant en arrière. Change à mi-temps.',
+    zones: ['hanches', 'jambes'],
     niveauRequis: 1,
   },
   {
@@ -87,6 +91,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Monte les épaules vers les oreilles, roule vers l\'arrière, relâche.',
+    zones: ['epaules', 'nuque'],
     niveauRequis: 1,
   },
   {
@@ -102,6 +107,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Pieds ancrés, fais pivoter le buste de gauche à droite, bras relâchés.',
+    zones: ['tronc', 'dos'],
     niveauRequis: 1,
   },
   {
@@ -117,6 +123,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Sur place, monte les genoux à hauteur de hanche, sans sauter.',
+    zones: ['jambes', 'hanches'],
     niveauRequis: 1,
   },
   {
@@ -133,6 +140,7 @@ export const CATALOGUE: Exercice[] = [
     bruit: 'silencieux',
     consigne: 'En fente avant, pose la main au sol et ouvre le buste vers le ciel. Alterne.',
     astuce: 'Le meilleur échauffement de hanches qui existe. Ne le saute pas.',
+    zones: ['hanches', 'jambes'],
     niveauRequis: 2,
   },
 
@@ -923,6 +931,7 @@ export const CATALOGUE: Exercice[] = [
     bruit: 'silencieux',
     consigne: 'Assis jambes tendues, penche-toi vers les pieds, dos long.',
     astuce: 'Ne force pas : c\'est un étirement, pas un concours.',
+    zones: ['jambes', 'hanches'],
     niveauRequis: 1,
   },
   {
@@ -938,6 +947,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Debout, attrape ta cheville derrière toi, genoux serrés. Change à mi-temps.',
+    zones: ['jambes'],
     niveauRequis: 1,
   },
   {
@@ -953,6 +963,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: ['mur'],
     bruit: 'silencieux',
     consigne: 'Main à plat sur le mur, bras tendu, pivote le buste vers l\'extérieur.',
+    zones: ['poitrine', 'epaules'],
     niveauRequis: 1,
   },
   {
@@ -968,6 +979,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'À genoux, fesses sur les talons, bras tendus devant, front au sol. Respire.',
+    zones: ['dos', 'hanches'],
     niveauRequis: 1,
   },
   {
@@ -983,6 +995,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Sur le dos, cheville sur le genou opposé, ramène la cuisse vers toi.',
+    zones: ['hanches', 'jambes'],
     niveauRequis: 1,
   },
   {
@@ -998,6 +1011,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'À plat ventre, pousse sur les mains pour ouvrir la poitrine, bassin au sol.',
+    zones: ['dos', 'poitrine'],
     niveauRequis: 1,
   },
   {
@@ -1013,6 +1027,7 @@ export const CATALOGUE: Exercice[] = [
     materiel: [],
     bruit: 'silencieux',
     consigne: 'Incline doucement la tête d\'un côté, main sur la tempe. Change de côté.',
+    zones: ['nuque', 'epaules'],
     niveauRequis: 1,
   },
 ];
@@ -1048,6 +1063,27 @@ export function exercicesDisponibles(filtre: FiltreExercices): Exercice[] {
     if (filtre.familles && !filtre.familles.includes(e.famille)) return false;
     return true;
   });
+}
+
+/**
+ * Zones sollicitées par une famille d'effort.
+ *
+ * Évite d'annoter les 45 exercices d'effort un par un : leur famille dit
+ * déjà ce qu'ils mobilisent. Seuls les exercices de mobilité, qu'il faut
+ * choisir finement, portent leurs zones explicitement.
+ */
+export const ZONES_PAR_FAMILLE: Record<Famille, ZoneCorps[]> = {
+  pousse: ['poitrine', 'epaules'],
+  tire: ['dos', 'epaules'],
+  jambes: ['jambes', 'hanches'],
+  gainage: ['tronc', 'dos'],
+  cardio: ['jambes', 'hanches'],
+  mobilite: [],
+};
+
+/** Zones qu'un exercice mobilise, qu'elles soient déclarées ou déduites. */
+export function zonesDe(exercice: Exercice): ZoneCorps[] {
+  return exercice.zones ?? ZONES_PAR_FAMILLE[exercice.famille];
 }
 
 /** Exercices qui viennent d'entrer dans le deck en passant au niveau `niveau`. */

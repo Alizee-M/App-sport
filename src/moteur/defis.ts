@@ -26,6 +26,18 @@ export interface Defi {
   etapes: EtapeDefi[];
   /** Unité du score, pour l'affichage. */
   unite: string;
+  /**
+   * Score correspondant à un effort plein, pour un `amrap` ou un `max`.
+   * En dessous, l'XP est proportionnelle : trois pompes ne valent pas
+   * autant que trente.
+   */
+  reference?: number;
+  /**
+   * Temps en dessous duquel un `chrono` n'est pas crédible. Personne ne
+   * fait 100 squats en huit secondes : c'est qu'on a appuyé sur
+   * « Terminé » sans rien faire.
+   */
+  tempsMinimalSec?: number;
   niveauRequis: number;
 }
 
@@ -39,6 +51,7 @@ export const DEFIS: Defi[] = [
     dureeSec: 60,
     etapes: [{ exerciceId: 'burpees' }],
     unite: 'burpees',
+    reference: 15,
     niveauRequis: 3,
   },
   {
@@ -50,6 +63,7 @@ export const DEFIS: Defi[] = [
     dureeSec: 300,
     etapes: [{ exerciceId: 'chaise_murale' }],
     unite: 'secondes',
+    reference: 60,
     niveauRequis: 1,
   },
   {
@@ -61,6 +75,7 @@ export const DEFIS: Defi[] = [
     dureeSec: 300,
     etapes: [{ exerciceId: 'planche' }],
     unite: 'secondes',
+    reference: 60,
     niveauRequis: 1,
   },
   {
@@ -71,6 +86,7 @@ export const DEFIS: Defi[] = [
     format: 'chrono',
     etapes: [{ exerciceId: 'squats', reps: 100 }],
     unite: 'secondes',
+    tempsMinimalSec: 90,
     niveauRequis: 2,
   },
   {
@@ -82,6 +98,7 @@ export const DEFIS: Defi[] = [
     dureeSec: 120,
     etapes: [{ exerciceId: 'pompes' }],
     unite: 'pompes',
+    reference: 30,
     niveauRequis: 1,
   },
   {
@@ -97,6 +114,7 @@ export const DEFIS: Defi[] = [
       { exerciceId: 'crunch_velo', reps: 15 },
     ],
     unite: 'tours',
+    reference: 6,
     niveauRequis: 2,
   },
   {
@@ -110,6 +128,7 @@ export const DEFIS: Defi[] = [
       { exerciceId: 'squats', reps: 55 },
     ],
     unite: 'secondes',
+    tempsMinimalSec: 150,
     niveauRequis: 4,
   },
   {
@@ -120,6 +139,7 @@ export const DEFIS: Defi[] = [
     format: 'chrono',
     etapes: [{ exerciceId: 'jumping_jacks', reps: 100 }],
     unite: 'secondes',
+    tempsMinimalSec: 60,
     niveauRequis: 1,
   },
 ];
@@ -137,9 +157,38 @@ export function plusGrandEstMeilleur(defi: Defi): boolean {
   return defi.format !== 'chrono';
 }
 
+/**
+ * Part d'effort réellement fournie, de 0 à 1.
+ *
+ * C'est le garde-fou contre le défi « validé » sans rien faire : lancer
+ * l'épreuve et appuyer aussitôt sur Terminé ne doit rien rapporter. On ne
+ * peut pas mesurer un mouvement depuis un téléphone posé au sol, mais on
+ * peut refuser de récompenser un résultat matériellement impossible.
+ */
+export function partEffort(defi: Defi, score: number): number {
+  if (score <= 0) return 0;
+
+  if (defi.format === 'chrono') {
+    // Un temps trop court signifie qu'on n'a pas fait les répétitions.
+    const minimum = defi.tempsMinimalSec ?? 0;
+    return score < minimum ? 0 : 1;
+  }
+
+  // AMRAP et maintien : l'XP est proportionnelle au travail fourni,
+  // plafonnée à l'effort de référence.
+  const reference = defi.reference ?? 1;
+  return Math.min(1, score / reference);
+}
+
+/** Un résultat qui ne vaut aucune XP ne vaut pas non plus un record. */
+export function resultatCredible(defi: Defi, score: number): boolean {
+  return partEffort(defi, score) > 0;
+}
+
 /** Le nouveau score bat-il l'ancien record ? Un premier score compte toujours. */
 export function estRecord(defi: Defi, nouveau: number, ancien: number | null | undefined): boolean {
-  if (ancien === null || ancien === undefined) return nouveau > 0;
+  if (!resultatCredible(defi, nouveau)) return false;
+  if (ancien === null || ancien === undefined) return true;
   return plusGrandEstMeilleur(defi) ? nouveau > ancien : nouveau < ancien;
 }
 
@@ -153,11 +202,17 @@ export function formaterScore(defi: Defi, score: number): string {
 }
 
 /**
- * XP d'un défi. Battre son record paie double : c'est le progrès qu'on
- * récompense, pas le simple fait de rejouer une épreuve connue.
+ * XP d'un défi, proportionnelle à l'effort fourni.
+ *
+ * Battre son record paie double : c'est le progrès qu'on récompense, pas
+ * le simple fait de rejouer une épreuve connue. Et un défi non fait ne
+ * rapporte rien du tout.
  */
-export function xpPourDefi(defi: Defi, record: boolean): number {
+export function xpPourDefi(defi: Defi, score: number, record: boolean): number {
+  const part = partEffort(defi, score);
+  if (part <= 0) return 0;
+
   const base = defi.format === 'chrono' ? 60 : 45;
   const bonusNiveau = defi.niveauRequis * 5;
-  return Math.round((base + bonusNiveau) * (record ? 2 : 1));
+  return Math.round((base + bonusNiveau) * part * (record ? 2 : 1));
 }

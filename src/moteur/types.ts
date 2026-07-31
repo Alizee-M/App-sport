@@ -50,6 +50,13 @@ export type Bruit = 'silencieux' | 'normal' | 'bruyant';
 /** Moment de la séance où un exercice a sa place. */
 export type Phase = 'echauffement' | 'bloc' | 'retour_calme';
 
+/**
+ * Zone du corps mobilisée. Sert à faire correspondre l'échauffement et
+ * les étirements au corps de séance : s'échauffer les épaules avant une
+ * séance de jambes n'a aucun intérêt.
+ */
+export type ZoneCorps = 'epaules' | 'poitrine' | 'dos' | 'tronc' | 'hanches' | 'jambes' | 'nuque';
+
 export interface Exercice {
   id: string;
   nom: string;
@@ -70,6 +77,12 @@ export interface Exercice {
   consigne: string;
   /** Détail qui évite de se faire mal ou de tricher. */
   astuce?: string;
+  /**
+   * Zones mobilisées. Renseigné sur les exercices de mobilité et
+   * d'étirement, pour lesquels il faut choisir en fonction du reste de la
+   * séance. Pour les exercices d'effort, la famille suffit à le déduire.
+   */
+  zones?: ZoneCorps[];
   /** Niveau du héros à partir duquel l'exercice entre dans le deck. */
   niveauRequis: number;
   /** Variante à proposer quand c'est trop dur. */
@@ -91,6 +104,12 @@ export interface Modificateur {
   nom: string;
   emoji: string;
   description: string;
+  /**
+   * Vrai si l'app modifie elle-même la séance (les chiffres affichés en
+   * tiennent déjà compte). Faux si la contrainte porte sur la façon de
+   * bouger : aucun logiciel ne peut la vérifier, elle tient sur parole.
+   */
+  applique: boolean;
   rarete: Rarete;
   /** Multiplicateur d'XP accordé en échange de la contrainte. */
   bonusXp: number;
@@ -111,8 +130,13 @@ export interface Bloc {
   nom: string;
   tours: number;
   travailSec: number;
+  /** Repos entre deux exercices. Zéro = on enchaîne sans souffler. */
   reposSec: number;
   exercices: ExercicePrescrit[];
+  /** Répétitions ajoutées à chaque tour (carte « Pyramide »). */
+  progressionReps?: number;
+  /** Secondes ajoutées à chaque tour, pour les exercices tenus au temps. */
+  progressionSecondes?: number;
 }
 
 export type TypeSeance = 'libre' | 'aventure' | 'boss';
@@ -126,7 +150,14 @@ export interface Seance {
   blocs: Bloc[];
   retourCalme: ExercicePrescrit[];
   modificateurs: Modificateur[];
+  /** Durée réelle du déroulé, cartes du jour comprises. */
   dureeEstimeeSec: number;
+  /**
+   * Temps demandé au tirage, avant application des cartes. C'est lui qui
+   * fait foi pour les quêtes : accepter une carte qui raccourcit les repos
+   * ne doit pas invalider l'étape qu'on était venu chercher.
+   */
+  dureeDemandeeMin: number;
   intensite: Intensite;
   focus: Focus;
   /** XP gagnée si la séance est menée jusqu'au bout. */
@@ -165,4 +196,6 @@ export interface OptionsTirage {
   titre?: string;
   /** Nombre de cartes modificatrices à tirer (par défaut : selon l'intensité). */
   nbModificateurs?: number;
+  /** Cartes imposées plutôt que tirées. Sert aux tests et aux quêtes scénarisées. */
+  modificateursImposes?: string[];
 }

@@ -17,6 +17,7 @@ import {
 } from '../../moteur/deroulement';
 import { repliqueCoach, type ContexteCoach } from '../../moteur/coach';
 import { creerAlea } from '../../moteur/alea';
+import { useSonsSeance } from '../sons';
 import type { ParamsPile } from '../navigation';
 
 type Props = NativeStackScreenProps<ParamsPile, 'Seance'>;
@@ -35,6 +36,8 @@ export default function Seance({ navigation }: Props) {
   const seance = useJeu((e) => e.seancePreparee);
   const terminerSeance = useJeu((e) => e.terminerSeance);
   const oublier = useJeu((e) => e.oublierSeancePreparee);
+  const sonsActifs = useJeu((e) => e.reglages.sons);
+  const jouer = useSonsSeance(sonsActifs);
 
   const etapes = useMemo(() => (seance ? construireEtapes(seance) : []), [seance]);
 
@@ -86,12 +89,37 @@ export default function Seance({ navigation }: Props) {
     setIndex((precedent) => {
       const suivant = precedent + 1;
       if (suivant >= etapes.length) {
+        jouer('fin');
         cloturer(etapes.length);
         return precedent;
       }
       return suivant;
     });
-  }, [etapes.length, cloturer]);
+  }, [etapes.length, cloturer, jouer]);
+
+  /* Un signal à chaque changement d'étape : sans lui, il faudrait fixer
+   * l'écran en permanence pour savoir quand passer à la suite — ce qui
+   * est intenable en pleine planche. */
+  const dernierBip = useRef<number | null>(null);
+  useEffect(() => {
+    dernierBip.current = null;
+    const courante = etapes[index];
+    if (!courante) return;
+    jouer(courante.genre === 'repos' || courante.genre === 'repos_bloc' ? 'repos' : 'depart');
+    // Volontairement limité à l'index : on annonce le changement d'étape,
+    // pas chaque battement du chronomètre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  /* Décompte des trois dernières secondes. */
+  useEffect(() => {
+    if (enPause || !etape) return;
+    const restant = Math.ceil(etape.secondes - ecoule);
+    if (restant <= 3 && restant >= 1 && dernierBip.current !== restant) {
+      dernierBip.current = restant;
+      jouer('bip');
+    }
+  }, [ecoule, etape, enPause, jouer]);
 
   // Fin d'étape : le temps imparti est écoulé.
   useEffect(() => {
@@ -174,6 +202,18 @@ export default function Seance({ navigation }: Props) {
       <View style={{ paddingHorizontal: espace.l }}>
         <Jauge progression={index / etapes.length} couleur={couleurs.violet} hauteur={5} />
       </View>
+
+      {/* La règle du jour est acceptée avant de commencer, puis oubliée
+          dès le premier exercice : elle reste donc affichée. */}
+      {seance.modificateurs.length > 0 ? (
+        <View style={styles.rappelRegles}>
+          {seance.modificateurs.map((m) => (
+            <Text key={m.id} style={styles.rappelRegle} numberOfLines={1}>
+              {m.emoji} {m.nom}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <ScrollView
         contentContainerStyle={styles.corps}
@@ -265,6 +305,22 @@ const styles = StyleSheet.create({
   },
   contexte: { ...texte.minuscule, color: couleurs.texteDoux, flex: 1 },
   restantTotal: { ...texte.minuscule, color: couleurs.texteFaible },
+
+  rappelRegles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espace.s,
+    paddingHorizontal: espace.l,
+    paddingTop: espace.s,
+  },
+  rappelRegle: {
+    ...texte.minuscule,
+    color: couleurs.or,
+    backgroundColor: 'rgba(255,200,87,0.12)',
+    paddingHorizontal: espace.m,
+    paddingVertical: 4,
+    borderRadius: rayon.rond,
+  },
 
   corps: {
     alignItems: 'center',

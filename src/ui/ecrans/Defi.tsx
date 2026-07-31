@@ -79,6 +79,7 @@ export default function Defi({ navigation, route }: Props) {
   const propos = useMemo(() => {
     if (!resultat) return '';
     const alea = creerAlea(Math.round(resultat.score * 17 + 3));
+    if (!resultat.details.compte) return repliqueCoach('abandon', alea);
     return repliqueCoach(resultat.details.record ? 'record' : 'fin_seance', alea);
   }, [resultat]);
 
@@ -227,10 +228,16 @@ export default function Defi({ navigation, route }: Props) {
       contentContainerStyle={{ padding: espace.l, paddingTop: insets.top + espace.xl, paddingBottom: espace.xxl }}
     >
       <View style={{ alignItems: 'center' }}>
-        <Text style={styles.emojiGrand}>{details.record ? '🏆' : '💪'}</Text>
-        <Text style={styles.titre}>{details.record ? 'Nouveau record !' : 'Défi terminé'}</Text>
-        <Text style={styles.scoreFinal}>{formaterScore(defi, resultat!.score)}</Text>
-        {details.ancienRecord !== null ? (
+        <Text style={styles.emojiGrand}>
+          {!details.compte ? '🤔' : details.record ? '🏆' : '💪'}
+        </Text>
+        <Text style={styles.titre}>
+          {!details.compte ? 'Ça ne compte pas' : details.record ? 'Nouveau record !' : 'Défi terminé'}
+        </Text>
+        <Text style={[styles.scoreFinal, !details.compte && { color: couleurs.texteFaible }]}>
+          {formaterScore(defi, resultat!.score)}
+        </Text>
+        {details.compte && details.ancienRecord !== null ? (
           <Text style={styles.ancienRecord}>
             Ancien record : {formaterScore(defi, details.ancienRecord)}
           </Text>
@@ -240,20 +247,41 @@ export default function Defi({ navigation, route }: Props) {
       <View style={{ height: espace.l }} />
       <BulleCoach texte={propos} />
 
-      <TitreSection>Récompense</TitreSection>
-      <Panneau>
-        <LigneInfo libelle="Expérience" valeur={`+${details.xpGagnee} XP`} couleurValeur={couleurs.or} />
-        {details.record ? (
-          <LigneInfo libelle="Bonus de record" valeur="×2" couleurValeur={couleurs.succes} />
-        ) : null}
-        {montaDeNiveau ? (
-          <LigneInfo
-            libelle="Niveau"
-            valeur={`${details.niveauAvant} → ${details.niveauApres}`}
-            couleurValeur={couleurs.or}
-          />
-        ) : null}
-      </Panneau>
+      {!details.compte ? (
+        <>
+          <TitreSection>Rien n'a été enregistré</TitreSection>
+          <Panneau couleurBordure={couleurs.texteFaible}>
+            <Text style={styles.explicationNonCompte}>
+              {defi.format === 'chrono'
+                ? `Ce temps n'est pas atteignable pour ${defi.etapes
+                    .map((e) => `${e.reps} ${exerciceParId(e.exerciceId)?.nom.toLowerCase()}`)
+                    .join(' et ')}. Relance quand tu veux vraiment le faire.`
+                : 'Un défi lancé puis arrêté aussitôt ne rapporte rien. Rien n\'est perdu pour autant : ton record précédent est intact.'}
+            </Text>
+          </Panneau>
+        </>
+      ) : (
+        <>
+          <TitreSection>Récompense</TitreSection>
+          <Panneau>
+            <LigneInfo
+              libelle="Expérience"
+              valeur={`+${details.xpGagnee} XP`}
+              couleurValeur={couleurs.or}
+            />
+            {details.record ? (
+              <LigneInfo libelle="Bonus de record" valeur="×2" couleurValeur={couleurs.succes} />
+            ) : null}
+            {montaDeNiveau ? (
+              <LigneInfo
+                libelle="Niveau"
+                valeur={`${details.niveauAvant} → ${details.niveauApres}`}
+                couleurValeur={couleurs.or}
+              />
+            ) : null}
+          </Panneau>
+        </>
+      )}
 
       {montaDeNiveau ? (
         <Text style={styles.nouveauTitre}>Te voilà « {titrePourNiveau(details.niveauApres)} ».</Text>
@@ -333,6 +361,7 @@ const styles = StyleSheet.create({
 
   scoreFinal: { fontSize: 46, fontWeight: '800', color: couleurs.or, marginTop: espace.l },
   ancienRecord: { ...texte.petit, color: couleurs.texteDoux, marginTop: espace.s },
+  explicationNonCompte: { ...texte.petit, color: couleurs.texteDoux, lineHeight: 20 },
   nouveauTitre: {
     ...texte.corps,
     color: couleurs.texteDoux,

@@ -26,7 +26,9 @@ test('la séance tient dans le temps demandé (±20 %)', () => {
   for (const dureeMin of durees) {
     for (const intensite of intensites) {
       for (let seed = 1; seed <= 8; seed++) {
-        const seance = genererSeance(options({ dureeMin, intensite, seed }));
+        // Sans carte du jour : certaines ajoutent volontairement un tour,
+        // et allongent donc la séance au-delà du temps demandé.
+        const seance = genererSeance(options({ dureeMin, intensite, seed, nbModificateurs: 0 }));
         const minutes = seance.dureeEstimeeSec / 60;
         const ecart = Math.abs(minutes - dureeMin) / dureeMin;
         assert.ok(
@@ -197,11 +199,13 @@ test('re-tirer une carte modificatrice recalcule l\'XP promise', () => {
   const seance = genererSeance(opts);
   assert.ok(seance.modificateurs.length > 0, 'aucun modificateur tiré');
 
-  const apres = retirerModificateur(seance, 0, opts.niveau, 4242);
+  const apres = retirerModificateur(seance, 0, opts, 4242);
   assert.notEqual(apres.modificateurs[0].id, seance.modificateurs[0].id);
 
+  // L'XP suit la durée de la séance telle qu'elle est après application
+  // de la nouvelle carte, qui peut l'avoir rallongée ou raccourcie.
   const attendu = Math.round(
-    (seance.dureeEstimeeSec / 60) *
+    (apres.dureeEstimeeSec / 60) *
       8 *
       1.2 *
       apres.modificateurs.reduce((p, m) => p * m.bonusXp, 1),

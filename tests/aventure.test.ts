@@ -190,8 +190,9 @@ test('les scores en secondes s\'affichent en minutes au-delà de 60 s', () => {
 });
 
 test('battre un record rapporte deux fois plus d\'XP', () => {
-  const defi = DEFIS[0];
-  assert.equal(xpPourDefi(defi, true), xpPourDefi(defi, false) * 2);
+  const defi = DEFIS.find((d) => d.format === 'amrap')!;
+  const scorePlein = defi.reference!;
+  assert.equal(xpPourDefi(defi, scorePlein, true), xpPourDefi(defi, scorePlein, false) * 2);
 });
 
 /* ------------------------------- Coach ------------------------------- */

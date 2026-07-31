@@ -58,12 +58,23 @@ export function construireEtapes(seance: Seance): Etape[] {
       bloc.exercices.forEach((prescrit, exoIndex) => {
         const dernierExercice = exoIndex === bloc.exercices.length - 1;
 
+        // Carte « Pyramide » : la charge monte à chaque tour. Le premier
+        // tour reste au dosage de base, d'où le `tour - 1`.
+        const supplement = tour - 1;
+        const dose: ExercicePrescrit =
+          prescrit.exercice.mesure === 'reps'
+            ? { ...prescrit, reps: (prescrit.reps ?? 0) + supplement * (bloc.progressionReps ?? 0) }
+            : {
+                ...prescrit,
+                secondes: bloc.travailSec + supplement * (bloc.progressionSecondes ?? 0),
+              };
+
         etapes.push({
           genre: 'effort',
-          secondes: bloc.travailSec,
+          secondes: dose.exercice.mesure === 'temps' ? (dose.secondes ?? bloc.travailSec) : bloc.travailSec,
           titre: prescrit.exercice.nom,
           contexte: `${nomBloc} · Tour ${tour}/${bloc.tours}`,
-          prescrit,
+          prescrit: dose,
           blocIndex,
           tour,
           dernierTour,
@@ -71,8 +82,9 @@ export function construireEtapes(seance: Seance): Etape[] {
         });
 
         // Pas de repos après le dernier exercice du dernier tour : le
-        // repos de bloc (ou la fin de séance) prend le relais.
-        if (!(dernierExercice && dernierTour)) {
+        // repos de bloc (ou la fin de séance) prend le relais. Et rien du
+        // tout si la carte du jour a supprimé les repos de ce bloc.
+        if (bloc.reposSec > 0 && !(dernierExercice && dernierTour)) {
           const suivant = dernierExercice
             ? bloc.exercices[0].exercice.nom
             : bloc.exercices[exoIndex + 1].exercice.nom;

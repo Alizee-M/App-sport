@@ -31,7 +31,7 @@ import {
   type Noeud,
   type Zone,
 } from '../moteur/aventure';
-import { estRecord, xpPourDefi, type Defi } from '../moteur/defis';
+import { estRecord, resultatCredible, xpPourDefi, type Defi } from '../moteur/defis';
 import { STATS } from '../moteur/types';
 
 /* ----------------------------------------------------------------------
@@ -52,6 +52,8 @@ export interface Reglages {
   focus: Focus;
   materielDispo: Materiel[];
   silencieux: boolean;
+  /** Bips de décompte et de changement d'exercice pendant la séance. */
+  sons: boolean;
 }
 
 export interface EntreeJournal {
@@ -83,6 +85,8 @@ export interface ResultatSeance {
 }
 
 export interface ResultatDefi {
+  /** Faux quand le résultat n'est pas crédible : rien n'a été enregistré. */
+  compte: boolean;
   record: boolean;
   ancienRecord: number | null;
   xpGagnee: number;
@@ -121,6 +125,7 @@ const REGLAGES_PAR_DEFAUT: Reglages = {
   focus: 'complet',
   materielDispo: ['chaise', 'mur'],
   silencieux: false,
+  sons: true,
 };
 
 function identifiant(): string {
@@ -265,10 +270,26 @@ export const useJeu = create<EtatJeu>()(
       enregistrerDefi: (defi, score) => {
         const etat = get();
         const ancienRecord = etat.recordsDefis[defi.id] ?? null;
-        const record = estRecord(defi, score, ancienRecord);
-        const xpGagnee = xpPourDefi(defi, record);
+        const niveauActuel = niveauDepuisXp(etat.xpTotal).niveau;
 
-        const niveauAvant = niveauDepuisXp(etat.xpTotal).niveau;
+        // Un défi lancé puis validé aussitôt n'a rien coûté : il ne doit
+        // rien rapporter, ne pas entretenir la série de jours, et ne pas
+        // encombrer le journal d'une ligne à zéro.
+        if (!resultatCredible(defi, score)) {
+          return {
+            compte: false,
+            record: false,
+            ancienRecord,
+            xpGagnee: 0,
+            niveauAvant: niveauActuel,
+            niveauApres: niveauActuel,
+          };
+        }
+
+        const record = estRecord(defi, score, ancienRecord);
+        const xpGagnee = xpPourDefi(defi, score, record);
+
+        const niveauAvant = niveauActuel;
         const xpTotal = etat.xpTotal + xpGagnee;
         const niveauApres = niveauDepuisXp(xpTotal).niveau;
 
@@ -295,7 +316,7 @@ export const useJeu = create<EtatJeu>()(
           journal: [entree, ...etat.journal].slice(0, TAILLE_JOURNAL),
         });
 
-        return { record, ancienRecord, xpGagnee, niveauAvant, niveauApres };
+        return { compte: true, record, ancienRecord, xpGagnee, niveauAvant, niveauApres };
       },
 
       toutEffacer: () =>

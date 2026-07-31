@@ -7,11 +7,18 @@ import type {
   OptionsTirage,
   Seance,
   Stat,
+  ZoneCorps,
 } from './types';
 import { creerAlea, choisirUn, tirerPondere } from './alea';
-import { exercicesDisponibles } from './exercices';
-import { tirerModificateurs, nbModificateursPourIntensite, bonusXpCumule } from './modificateurs';
+import { exercicesDisponibles, exerciceParId, zonesDe } from './exercices';
+import {
+  tirerModificateurs,
+  nbModificateursPourIntensite,
+  bonusXpCumule,
+  MODIFICATEURS_PAR_ID,
+} from './modificateurs';
 import { xpPotentielSeance } from './progression';
+import { construireEtapes, dureeTotaleEtapes } from './deroulement';
 
 /* ----------------------------------------------------------------------
  * Le tirage d'une séance.
@@ -101,6 +108,33 @@ function difficulteCible(niveau: number, intensite: Intensite): number {
 
 function poidsDifficulte(exercice: Exercice, cible: number): number {
   return 1 / (1 + Math.abs(exercice.difficulte - cible));
+}
+
+/** Durée typique d'un exercice de mobilité, pour réserver son temps. */
+const DUREE_MOBILITE_TYPE = 35;
+
+/** Zones du corps que le corps de séance va réellement solliciter. */
+function zonesSollicitees(blocs: Bloc[]): Set<ZoneCorps> {
+  const zones = new Set<ZoneCorps>();
+  for (const bloc of blocs) {
+    for (const prescrit of bloc.exercices) {
+      for (const zone of zonesDe(prescrit.exercice)) zones.add(zone);
+    }
+  }
+  return zones;
+}
+
+/**
+ * Favorise les exercices de mobilité qui préparent — ou relâchent — les
+ * zones effectivement travaillées. Sans cela, on pouvait s'échauffer les
+ * épaules avant une séance entièrement consacrée aux jambes.
+ */
+function poidsZones(exercice: Exercice, zonesVisees: Set<ZoneCorps>): number {
+  const zones = zonesDe(exercice);
+  if (zones.length === 0 || zonesVisees.size === 0) return 1;
+
+  const communes = zones.filter((z) => zonesVisees.has(z)).length;
+  return 1 + 2.2 * communes;
 }
 
 function poidsFocus(exercice: Exercice, focus: OptionsTirage['focus']): number {
@@ -197,6 +231,105 @@ function choisirStructure(budgetSec: number, intensite: Intensite, court: boolea
   return meilleure;
 }
 
+/* --------------------- Effets des cartes du jour ---------------------- */
+
+/**
+ * Applique à la séance les cartes qui la transforment réellement.
+ *
+ * Sans cette étape, une carte annonçant « repos raccourcis » laisserait
+ * le chrono afficher la même durée qu'avant : la règle serait un texte
+ * décoratif que l'écran contredit. Les cartes qui portent sur la façon
+ * de bouger (tempo, respiration) n'ont évidemment rien à faire ici.
+ */
+function appliquerModificateurs(
+  seance: Seance,
+  options: OptionsTirage,
+): Seance {
+  const actifs = new Set(seance.modificateurs.map((m) => m.id));
+  if (actifs.size === 0) return seance;
+
+  let echauffement = seance.echauffement;
+  let blocs = seance.blocs.map((bloc) => ({ ...bloc }));
+
+  if (actifs.has('echauffement_double')) {
+    echauffement = [...echauffement, ...echauffement];
+  }
+
+  if (actifs.has('repos_court')) {
+    blocs = blocs.map((bloc) => ({ ...bloc, reposSec: Math.max(5, bloc.reposSec - 5) }));
+  }
+
+  if (actifs.has('dernier_tour_double')) {
+    blocs = blocs.map((bloc) => ({ ...bloc, tours: bloc.tours + 1 }));
+  }
+
+  if (actifs.has('pyramide')) {
+    blocs = blocs.map((bloc) => ({ ...bloc, progressionReps: 2, progressionSecondes: 5 }));
+  }
+
+  if (actifs.has('variante_dure')) {
+    blocs = blocs.map((bloc) => ({
+      ...bloc,
+      exercices: bloc.exercices.map((prescrit) => {
+        const plusDur = versionPlusDure(prescrit.exercice, options);
+        return plusDur
+          ? prescrire(plusDur, bloc.travailSec, seance.intensite, options.niveau)
+          : prescrit;
+      }),
+    }));
+  }
+
+  // Ces deux-là ne visent qu'un bloc précis : on les applique en dernier,
+  // pour qu'elles portent sur les blocs déjà transformés.
+  if (actifs.has('contre_la_montre') && blocs.length > 0) {
+    blocs[0] = { ...blocs[0], reposSec: 0 };
+  }
+
+  if (actifs.has('un_tour_de_plus') && blocs.length > 0) {
+    const dernier = blocs.length - 1;
+    blocs[dernier] = { ...blocs[dernier], tours: blocs[dernier].tours + 1 };
+  }
+
+  if (actifs.has('miroir') && blocs.length > 0) {
+    const dernier = blocs.length - 1;
+    blocs[dernier] = { ...blocs[dernier], exercices: [...blocs[dernier].exercices].reverse() };
+  }
+
+  return { ...seance, echauffement, blocs };
+}
+
+function estJouable(exercice: Exercice, options: OptionsTirage): boolean {
+  if (exercice.niveauRequis > options.niveau) return false;
+  if (options.silencieux && exercice.bruit === 'bruyant') return false;
+  return exercice.materiel.every((m) => options.materielDispo.includes(m));
+}
+
+/**
+ * Version plus difficile d'un exercice, jouable ici et maintenant.
+ *
+ * On préfère la variante déclarée dans le catalogue, plus juste
+ * techniquement. À défaut, on remonte d'un cran dans la même famille :
+ * sans cette solution de repli, la carte ne mordait quasiment jamais à
+ * haut niveau, puisque seuls les exercices faciles — ceux qui ne sortent
+ * plus — déclarent une variante.
+ */
+function versionPlusDure(exercice: Exercice, options: OptionsTirage): Exercice | null {
+  const declaree = exercice.plusDur ? exerciceParId(exercice.plusDur) : undefined;
+  if (declaree && estJouable(declaree, options)) return declaree;
+
+  const candidats = exercicesDisponibles({
+    phase: 'bloc',
+    niveau: options.niveau,
+    materielDispo: options.materielDispo,
+    silencieux: options.silencieux,
+    familles: [exercice.famille],
+  })
+    .filter((e) => e.difficulte > exercice.difficulte)
+    .sort((a, b) => a.difficulte - b.difficulte);
+
+  return candidats[0] ?? null;
+}
+
 /* ------------------------------ Tirage ------------------------------- */
 
 function tirerPourBloc(
@@ -217,9 +350,14 @@ function tirerPourBloc(
     // si le deck disponible est trop petit pour remplir tous les blocs.
     if (dejaDansSeance.has(exercice.id)) poids *= 0.05;
 
-    // Une famille pas encore représentée dans ce bloc passe devant.
+    // Une famille pas encore représentée dans ce bloc passe devant, pour
+    // éviter quatre exercices de jambes d'affilée. Mais quand un focus est
+    // demandé, cette recherche de variété doit s'effacer : choisir
+    // « Cardio » et recevoir un panachage serait ne pas écouter la demande.
     const famillesDuBloc = new Set(dejaTires.map((e) => e.famille));
-    if (!famillesDuBloc.has(exercice.famille)) poids *= 1.9;
+    if (!famillesDuBloc.has(exercice.famille)) {
+      poids *= options.focus === 'complet' ? 1.9 : 1.15;
+    }
 
     return poids;
   });
@@ -243,31 +381,18 @@ export function genererSeance(options: OptionsTirage): Seance {
     silencieux: options.silencieux,
   };
 
-  /* --- Échauffement : jamais négociable, même sur une séance de 10 min --- */
-  const poolEchauffement = exercicesDisponibles({ ...filtreBase, phase: 'echauffement' });
-  const echauffement = tirerPondere(
-    alea,
-    poolEchauffement,
-    Math.min(court ? 3 : 4, poolEchauffement.length),
-    (e) => poidsFraicheur(e, options.historiqueIds),
-  ).map(prescrireMobilite);
+  const nbEchauffement = court ? 3 : 4;
+  const nbEtirements = court ? 2 : 3;
 
-  /* --- Retour au calme --- */
-  const poolEtirements = exercicesDisponibles({ ...filtreBase, phase: 'retour_calme' });
-  const retourCalme = tirerPondere(
-    alea,
-    poolEtirements,
-    Math.min(court ? 2 : 3, poolEtirements.length),
-    (e) => poidsFraicheur(e, options.historiqueIds),
-  ).map(prescrireMobilite);
-
-  const secondesEchauffement = echauffement.reduce((s, p) => s + (p.secondes ?? 0), 0);
-  const secondesRetourCalme = retourCalme.reduce((s, p) => s + (p.secondes ?? 0), 0);
-
-  /* --- Corps de séance --- */
+  /* --- Corps de séance ---
+   * Il se tire en premier : l'échauffement et les étirements doivent
+   * ensuite pouvoir cibler ce qui sera réellement sollicité. On réserve
+   * leur temps sur une estimation (ces exercices durent 30 à 45 s) ; la
+   * durée finalement annoncée est mesurée sur le déroulé, pas déduite
+   * de cette approximation. */
   const budget = Math.max(
     120,
-    options.dureeMin * 60 - secondesEchauffement - secondesRetourCalme,
+    options.dureeMin * 60 - nbEchauffement * DUREE_MOBILITE_TYPE - nbEtirements * DUREE_MOBILITE_TYPE,
   );
   const structure = choisirStructure(budget, options.intensite, court);
 
@@ -302,14 +427,35 @@ export function genererSeance(options: OptionsTirage): Seance {
     });
   }
 
+  /* --- Échauffement et étirements, ciblés sur ce qui va travailler ---
+   * Jamais négociables, même sur une séance de 10 minutes. */
+  const zonesVisees = zonesSollicitees(blocs);
+
+  const poolEchauffement = exercicesDisponibles({ ...filtreBase, phase: 'echauffement' });
+  const echauffement = tirerPondere(
+    alea,
+    poolEchauffement,
+    Math.min(nbEchauffement, poolEchauffement.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
+  const poolEtirements = exercicesDisponibles({ ...filtreBase, phase: 'retour_calme' });
+  const retourCalme = tirerPondere(
+    alea,
+    poolEtirements,
+    Math.min(nbEtirements, poolEtirements.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
   /* --- Cartes modificatrices --- */
   const nbCartes = options.nbModificateurs ?? nbModificateursPourIntensite(options.intensite);
-  const modificateurs = tirerModificateurs(alea, options.niveau, nbCartes);
+  const modificateurs = options.modificateursImposes
+    ? options.modificateursImposes
+        .map((id) => MODIFICATEURS_PAR_ID[id])
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+    : tirerModificateurs(alea, options.niveau, nbCartes);
 
-  const dureeEstimeeSec =
-    secondesEchauffement + secondesRetourCalme + dureeBlocs(structure);
-
-  return {
+  const provisoire: Seance = {
     seed: options.seed,
     type,
     titre: options.titre ?? titreSeance(alea),
@@ -317,9 +463,24 @@ export function genererSeance(options: OptionsTirage): Seance {
     blocs,
     retourCalme,
     modificateurs,
-    dureeEstimeeSec,
+    dureeEstimeeSec: 0,
+    dureeDemandeeMin: options.dureeMin,
     intensite: options.intensite,
     focus: options.focus,
+    xpPotentiel: 0,
+  };
+
+  const transformee = appliquerModificateurs(provisoire, options);
+
+  // La durée annoncée est mesurée sur le déroulé réel plutôt que
+  // recalculée en parallèle : c'est la seule façon qu'elle ne puisse pas
+  // mentir, y compris quand une carte ajoute un tour ou supprime les
+  // repos.
+  const dureeEstimeeSec = dureeTotaleEtapes(construireEtapes(transformee));
+
+  return {
+    ...transformee,
+    dureeEstimeeSec,
     xpPotentiel: xpPotentielSeance(
       dureeEstimeeSec,
       options.intensite,
@@ -386,7 +547,22 @@ export function retirerExercice(
     return { ...b, exercices };
   });
 
-  return { ...seance, blocs };
+  // Échanger un exercice compté en répétitions contre un exercice tenu au
+  // temps peut déplacer la durée sous la carte « Pyramide » : on remesure
+  // plutôt que de conserver un chiffre devenu faux.
+  const remaniee = { ...seance, blocs };
+  const dureeEstimeeSec = dureeTotaleEtapes(construireEtapes(remaniee));
+
+  return {
+    ...remaniee,
+    dureeEstimeeSec,
+    xpPotentiel: xpPotentielSeance(
+      dureeEstimeeSec,
+      seance.intensite,
+      seance.type,
+      bonusXpCumule(seance.modificateurs),
+    ),
+  };
 }
 
 /**
@@ -398,7 +574,7 @@ export function retirerExercice(
 export function retirerModificateur(
   seance: Seance,
   index: number,
-  niveau: number,
+  options: OptionsTirage,
   graineRetirage: number,
 ): Seance {
   const actuel = seance.modificateurs[index];
@@ -406,21 +582,22 @@ export function retirerModificateur(
 
   const alea = creerAlea(graineRetirage);
   const exclure = seance.modificateurs.map((m) => m.id);
-  const [remplacant] = tirerModificateurs(alea, niveau, 1, exclure);
+  const [remplacant] = tirerModificateurs(alea, options.niveau, 1, exclure);
   if (!remplacant) return seance;
 
   const modificateurs = seance.modificateurs.map((m, i) => (i === index ? remplacant : m));
 
-  return {
-    ...seance,
-    modificateurs,
-    xpPotentiel: xpPotentielSeance(
-      seance.dureeEstimeeSec,
-      seance.intensite,
-      seance.type,
-      bonusXpCumule(modificateurs),
-    ),
-  };
+  // On régénère depuis la même graine plutôt que de rapiécer la séance :
+  // une carte transforme sa structure, et les effets de l'ancienne ne
+  // s'annulent pas après coup. Graine et titre identiques garantissent
+  // que seuls les effets de la nouvelle carte changent.
+  return genererSeance({
+    ...options,
+    seed: seance.seed,
+    type: seance.type,
+    titre: seance.titre,
+    modificateursImposes: modificateurs.map((m) => m.id),
+  });
 }
 
 /** Tous les identifiants d'exercices d'une séance, échauffement compris. */

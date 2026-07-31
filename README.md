@@ -29,6 +29,15 @@ escargot, pyramide, contre la montre, le sol est en lave… Chaque
 contrainte acceptée paie en XP, donc c'est un choix, jamais une punition.
 Une carte qui ne te plaît pas s'échange.
 
+Chaque carte annonce qui l'applique. Les cartes **⚙️ auto** transforment
+réellement la séance : les repos raccourcissent, un tour s'ajoute, le
+dernier bloc se joue à l'envers, les répétitions montent tour après tour.
+Les cartes **🤝 sur l'honneur** portent sur ta façon de bouger (tempo,
+respiration, position des mains) : aucun logiciel ne peut les vérifier.
+Cette distinction est affichée parce que sans elle, une carte promettant
+un changement que l'écran contredit n'est pas une règle du jeu — c'est un
+bug.
+
 ### 📈 La progression
 Le deck **grandit avec ton niveau** : de nouveaux exercices et de nouvelles
 règles entrent en jeu au fil des niveaux. C'est la réponse de fond à
@@ -50,6 +59,15 @@ Un **coach** commente l'effort du début à la fin. Il a du répondant, mais
 il ne culpabilise jamais une absence : quand tu reviens après trois
 semaines, il est simplement content.
 
+### Pendant l'effort
+Des **repères sonores** décomptent les trois dernières secondes et
+signalent chaque changement d'exercice — indispensable quand on est en
+planche, le nez au sol. Ils se mêlent à ta musique sans l'interrompre, et
+se coupent depuis le Journal.
+
+L'**échauffement et les étirements ciblent les zones réellement
+sollicitées** : pas de mobilisation d'épaules avant une séance de jambes.
+
 ---
 
 ## Installer l'app sur ton téléphone
@@ -67,7 +85,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 61 tests échouent : ce qui est publié a donc
+vérification des types ou les 85 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -89,7 +107,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 61 tests sur le moteur de jeu
+npm test          # 85 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -101,10 +119,12 @@ npx expo prebuild --platform android --clean
 cd android && ./gradlew assembleRelease
 ```
 
-Les icônes sont générées par script, sans dépendance graphique :
+Icônes et sons sont générés par script, sans dépendance graphique ni
+fichier audio à licencier :
 
 ```bash
 node scripts/generer-icones.mjs
+node scripts/generer-sons.mjs
 ```
 
 ---
@@ -128,9 +148,11 @@ src/moteur/          logique pure, testée (aucune dépendance UI)
   defis.ts             épreuves chronométrées et records
   coach.ts             répliques selon le moment
 
+src/ui/sons.ts       repères sonores de la séance
+
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               61 tests node:test
+tests/               85 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -143,4 +165,11 @@ Les garde-fous du tirage passent avant tout le reste :
 - une même graine redonne exactement la même séance, ce qui permet
   d'échanger une seule carte sans que le reste bouge ;
 - l'historique récent fait bien reculer les exercices déjà faits ;
-- une séance tirée pour une étape d'aventure valide toujours cette étape.
+- une séance tirée pour une étape d'aventure valide toujours cette étape ;
+- la durée annoncée égale **toujours** celle du déroulé réel, cartes du
+  jour comprises — c'est l'invariant qui empêche l'affichage de mentir ;
+- toute carte marquée « appliquée » modifie effectivement la séance, et
+  aucune carte de comportement n'y touche ;
+- un défi validé sans rien faire ne rapporte aucune XP et ne décroche
+  aucun record ;
+- l'échauffement prépare toujours au moins une zone qui va travailler.

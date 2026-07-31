@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { couleurs, espace, rayon, texte } from '../theme';
 import { Bouton, EtatVide, LigneInfo, Panneau, Puce, TitreSection } from '../composants/base';
+import { Bascule } from '../composants/elements';
 import { useJeu } from '../../etat/magasin';
 import { niveauDepuisXp, statDominante, titrePourNiveau } from '../../moteur/progression';
 import { EMOJI_STAT, LIBELLE_STAT } from '../../moteur/types';
@@ -18,6 +19,8 @@ export default function Journal() {
   const xpTotal = useJeu((e) => e.xpTotal);
   const stats = useJeu((e) => e.stats);
   const seancesTerminees = useJeu((e) => e.seancesTerminees);
+  const reglages = useJeu((e) => e.reglages);
+  const majReglages = useJeu((e) => e.majReglages);
   const toutEffacer = useJeu((e) => e.toutEffacer);
 
   const niveau = niveauDepuisXp(xpTotal);
@@ -69,6 +72,16 @@ export default function Journal() {
           {NIVEAU_DERNIER_DEBLOCAGE}.
         </Text>
       ) : null}
+
+      <TitreSection>Réglages</TitreSection>
+      <Panneau>
+        <Bascule
+          titre="Sons pendant la séance"
+          description="Décompte des trois dernières secondes et signal au changement d'exercice. Ils se mêlent à ta musique sans la couper."
+          actif={reglages.sons}
+          onChange={(sons) => majReglages({ sons })}
+        />
+      </Panneau>
 
       <TitreSection>Historique</TitreSection>
       {journal.length === 0 ? (
