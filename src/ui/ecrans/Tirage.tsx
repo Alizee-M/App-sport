@@ -100,6 +100,8 @@ export default function Tirage({ navigation, route }: Props) {
           preparerSeance(seance, idNoeud ?? null);
           navigation.replace('Seance');
         }}
+        // Une quête arrive avec son cadre imposé : il n'y a rien à régler.
+        onChangerCadre={noeud ? undefined : () => setSeance(null)}
       />
     );
   }
@@ -189,6 +191,7 @@ function Apercu({
   onRetirerExercice,
   onRetirerModificateur,
   onLancer,
+  onChangerCadre,
 }: {
   seance: Seance;
   options: OptionsTirage;
@@ -198,6 +201,7 @@ function Apercu({
   onRetirerExercice: (bloc: number, exo: number) => void;
   onRetirerModificateur: (index: number) => void;
   onLancer: () => void;
+  onChangerCadre?: () => void;
 }) {
   const apparition = useRef(new Animated.Value(0)).current;
 
@@ -303,6 +307,15 @@ function Apercu({
           <Text style={styles.astuceRetirage}>
             Une carte ne te plaît pas ? Touche le 🎲 à côté pour l'échanger.
           </Text>
+
+          {onChangerCadre ? (
+            <Bouton
+              titre="Changer le cadre"
+              variante="fantome"
+              onPress={onChangerCadre}
+              style={{ marginTop: espace.l }}
+            />
+          ) : null}
         </Animated.View>
       </ScrollView>
 
