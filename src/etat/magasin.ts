@@ -330,8 +330,11 @@ export const useJeu = create<EtatJeu>()(
         reglages: etat.reglages,
         seancesTerminees: etat.seancesTerminees,
       }),
-      onRehydrateStorage: () => (etat) => {
-        etat?.majReglages({});
+      // On lève le drapeau même si la relecture a échoué : mieux vaut
+      // repartir d'une progression vide que rester bloqué sur l'écran de
+      // chargement sans aucun recours.
+      onRehydrateStorage: () => (_etat, erreur) => {
+        if (erreur) console.warn('Progression illisible, redémarrage à zéro :', erreur);
         useJeu.setState({ hydrate: true });
       },
     },

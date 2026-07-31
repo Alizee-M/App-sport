@@ -42,6 +42,7 @@ export default function Defi({ navigation, route }: Props) {
   const [resultat, setResultat] = useState<{ score: number; details: ResultatDefi } | null>(null);
 
   const debut = useRef(Date.now());
+  const conclu = useRef(false);
   const compteARebours = defi?.format === 'amrap';
   const ancienRecord = defi ? (records[defi.id] ?? null) : null;
 
@@ -56,7 +57,11 @@ export default function Defi({ navigation, route }: Props) {
 
   const conclure = useCallback(
     (score: number) => {
-      if (!defi) return;
+      // Le chrono continue de tourner le temps que l'état se propage :
+      // sans ce verrou, un AMRAP qui arrive à zéro pourrait enregistrer
+      // son score deux fois et compter l'XP en double.
+      if (!defi || conclu.current) return;
+      conclu.current = true;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const details = enregistrerDefi(defi, score);
       setResultat({ score, details });
@@ -131,6 +136,7 @@ export default function Defi({ navigation, route }: Props) {
           titre="Lancer le défi"
           icone="🔥"
           onPress={() => {
+            conclu.current = false;
             setEcoule(0);
             setCompteur(0);
             setPhase('en_cours');
@@ -258,6 +264,7 @@ export default function Defi({ navigation, route }: Props) {
         titre="Recommencer"
         variante="secondaire"
         onPress={() => {
+          conclu.current = false;
           setEcoule(0);
           setCompteur(0);
           setResultat(null);

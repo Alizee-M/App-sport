@@ -119,9 +119,12 @@ export default function Seance({ navigation }: Props) {
     return () => abonnement.remove();
   }, [abandonner]);
 
-  // Une séance perdue (redémarrage de l'app en plein écran) : on sort proprement.
+  /* Séance introuvable : on sort proprement plutôt que d'afficher un écran
+   * vide. Le drapeau de clôture est indispensable — terminer une séance
+   * vide `seancePreparee`, et sans lui cet effet renverrait au camp en
+   * écrasant le bilan qu'on vient tout juste d'ouvrir. */
   useEffect(() => {
-    if (!seance) {
+    if (!seance && !cloture.current) {
       oublier();
       navigation.replace('Onglets');
     }
