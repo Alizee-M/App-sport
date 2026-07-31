@@ -117,7 +117,7 @@ const REPLIQUES: Record<ContexteCoach, string[]> = {
     'Record explosé. Ça, c\'est du progrès mesurable.',
   ],
   niveau_gagne: [
-    'NIVEAU {niveau}. Nouveau matériel dans le deck.',
+    'NIVEAU {niveau}. De nouveaux exercices viennent de se débloquer.',
     'Niveau {niveau} atteint. Le tirage vient de s\'enrichir.',
     'Niveau {niveau} ! De nouvelles cartes viennent d\'arriver.',
   ],
@@ -133,7 +133,7 @@ const REPLIQUES: Record<ContexteCoach, string[]> = {
   ],
   exercice_retire: [
     'Carte échangée. On ne va pas se forcer sur un truc qui ne le sent pas.',
-    'Remplacé. Le deck est grand.',
+    'Remplacé. Il y a de quoi faire.',
     'Nouvelle carte. Celle-là devrait mieux passer.',
   ],
 };

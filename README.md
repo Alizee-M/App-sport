@@ -39,11 +39,16 @@ un changement que l'écran contredit n'est pas une règle du jeu — c'est un
 bug.
 
 ### 📈 La progression
-Le deck **grandit avec ton niveau** : de nouveaux exercices et de nouvelles
-règles entrent en jeu au fil des niveaux. C'est la réponse de fond à
-« c'est toujours pareil » — au niveau 12, le tirage ne peut littéralement
-plus produire les séances du niveau 2. Quatre jauges (Force, Cardio,
-Souplesse, Gainage) montent selon ce que tu fais réellement.
+La réserve d'exercices **grandit avec ton niveau**, et le bilan de séance
+affiche le gain en clair : `47 → 55 exercices que le tirage peut sortir`.
+On passe de **19 exercices possibles au niveau 1 à 70 au niveau 25**, et
+chaque niveau intermédiaire en débloque au moins un — un palier qui ne
+changerait rien au tirage ne serait qu'une félicitation creuse.
+
+C'est la réponse de fond à « c'est toujours pareil » : au niveau 12, le
+tirage ne peut littéralement plus produire les séances du niveau 2. Quatre
+jauges (Force, Cardio, Souplesse, Gainage) montent selon ce que tu fais
+réellement.
 
 ### 🗺️ L'aventure
 Vingt-quatre étapes réparties en cinq zones, chacune close par un boss
@@ -85,7 +90,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 85 tests échouent : ce qui est publié a donc
+vérification des types ou les 88 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -107,7 +112,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 85 tests sur le moteur de jeu
+npm test          # 88 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -139,7 +144,7 @@ séance est ainsi testable sous `node --test`, sans émulateur.
 src/moteur/          logique pure, testée (aucune dépendance UI)
   types.ts             vocabulaire du jeu
   alea.ts              hasard reproductible (même graine → même séance)
-  exercices.ts         catalogue de 60 exercices
+  exercices.ts         catalogue de 84 exercices
   modificateurs.ts     les 20 cartes « règles du jour »
   seance.ts            le tirage : contraintes, pondérations, dosage
   deroulement.ts       la séance dépliée étape par étape
@@ -152,7 +157,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               85 tests node:test
+tests/               88 tests node:test
 ```
 
 ### Ce que les tests vérifient

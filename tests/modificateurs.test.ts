@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { genererSeance, retirerModificateur } from '../src/moteur/seance';
 import { construireEtapes, dureeTotaleEtapes, estEffort } from '../src/moteur/deroulement';
 import { MODIFICATEURS, MODIFICATEURS_PAR_ID } from '../src/moteur/modificateurs';
-import type { OptionsTirage } from '../src/moteur/types';
+import { exerciceParId } from '../src/moteur/exercices';
+import type { Materiel, OptionsTirage } from '../src/moteur/types';
 
 /* ----------------------------------------------------------------------
  * Les cartes « règle du jour » qui se disent appliquées doivent l'être
@@ -12,14 +13,17 @@ import type { OptionsTirage } from '../src/moteur/types';
  * n'est pas une règle du jeu, c'est un mensonge.
  * -------------------------------------------------------------------- */
 
+const NIVEAU_TEST = 15;
+const MATERIEL_TEST: Materiel[] = ['chaise', 'mur', 'tapis'];
+
 function options(surcharge: Partial<OptionsTirage> = {}): OptionsTirage {
   return {
     dureeMin: 30,
     intensite: 2,
     focus: 'complet',
-    materielDispo: ['chaise', 'mur', 'tapis'],
+    materielDispo: MATERIEL_TEST,
     silencieux: false,
-    niveau: 15,
+    niveau: NIVEAU_TEST,
     historiqueIds: [],
     seed: 4242,
     ...surcharge,
@@ -163,8 +167,17 @@ test('Montée en gamme remplace les exercices par leur version plus dure', () =>
         apres.difficulte > avant.difficulte,
         `${avant.id} (difficulté ${avant.difficulte}) remplacé par ${apres.id} (${apres.difficulte}), qui n'est pas plus dur`,
       );
-      // La variante déclarée dans le catalogue prime sur le repli par famille.
-      if (avant.plusDur) {
+
+      // La variante déclarée prime — mais seulement si elle est jouable :
+      // certaines ne se débloquent qu'à un niveau plus élevé que celui du
+      // héros, et c'est alors le repli par famille qui s'applique.
+      const declaree = avant.plusDur ? exerciceParId(avant.plusDur) : undefined;
+      const declareeJouable =
+        declaree !== undefined &&
+        declaree.niveauRequis <= NIVEAU_TEST &&
+        declaree.materiel.every((m) => MATERIEL_TEST.includes(m));
+
+      if (declareeJouable) {
         assert.equal(apres.id, avant.plusDur, `${avant.id} aurait dû devenir ${avant.plusDur}`);
       } else {
         assert.equal(apres.famille, avant.famille, `${apres.id} a changé de famille`);

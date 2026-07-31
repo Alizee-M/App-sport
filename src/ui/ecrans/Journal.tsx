@@ -68,7 +68,7 @@ export default function Journal() {
 
       {niveau.niveau < NIVEAU_DERNIER_DEBLOCAGE ? (
         <Text style={styles.notePlusTard}>
-          De nouveaux exercices continuent d'entrer dans ton deck jusqu'au niveau{' '}
+          De nouveaux exercices et de nouvelles règles se débloquent jusqu'au niveau{' '}
           {NIVEAU_DERNIER_DEBLOCAGE}.
         </Text>
       ) : null}

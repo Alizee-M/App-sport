@@ -27,6 +27,15 @@ export const EMOJI_STAT: Record<Stat, string> = {
 /** Groupe de mouvement : sert à garantir qu'un bloc reste varié. */
 export type Famille = 'pousse' | 'tire' | 'jambes' | 'gainage' | 'cardio' | 'mobilite';
 
+export const LIBELLE_FAMILLE: Record<Famille, string> = {
+  pousse: 'Poussée',
+  tire: 'Tirage',
+  jambes: 'Jambes',
+  gainage: 'Gainage',
+  cardio: 'Cardio',
+  mobilite: 'Mobilité',
+};
+
 /** Ce qu'on peut avoir sous la main dans un salon. */
 export type Materiel = 'chaise' | 'mur' | 'tapis' | 'elastique' | 'halteres';
 

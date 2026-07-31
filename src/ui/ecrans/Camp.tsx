@@ -98,7 +98,7 @@ export default function Camp() {
         onPress={() => navigation.navigate('Tirage')}
       />
       <Text style={styles.sousBouton}>
-        {tailleDeck} exercices dans ton deck · jamais deux fois la même séance
+        {tailleDeck} exercices peuvent sortir · jamais deux fois la même séance
       </Text>
 
       {/* ---------------------------- Quête ---------------------------- */}

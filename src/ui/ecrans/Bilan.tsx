@@ -10,7 +10,7 @@ import { BulleCoach } from '../composants/elements';
 import { repliqueCoach } from '../../moteur/coach';
 import { creerAlea } from '../../moteur/alea';
 import { titrePourNiveau } from '../../moteur/progression';
-import { EMOJI_STAT, LIBELLE_STAT, STATS } from '../../moteur/types';
+import { EMOJI_STAT, LIBELLE_FAMILLE, LIBELLE_STAT, STATS } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
 
 type Props = NativeStackScreenProps<ParamsPile, 'Bilan'>;
@@ -120,19 +120,46 @@ export default function Bilan({ navigation, route }: Props) {
         {/* -------------------------- Déblocages -------------------------- */}
         {resultat.exercicesDebloques.length > 0 || resultat.modificateursDebloques.length > 0 ? (
           <>
-            <TitreSection>Nouveau dans ton deck</TitreSection>
+            <TitreSection>Tu viens de débloquer</TitreSection>
             <Panneau couleurBordure={couleurs.violet}>
+              {/* Le chiffre est le cœur de l'affaire : il dit en quoi la
+                  montée de niveau change tes séances futures. Sans lui, on
+                  voit une liste de noms sans savoir ce qu'elle apporte. */}
+              {resultat.exercicesPossiblesApres > resultat.exercicesPossiblesAvant ? (
+                <View style={styles.vivier}>
+                  <Text style={styles.vivierChiffres}>
+                    {resultat.exercicesPossiblesAvant} →{' '}
+                    <Text style={{ color: couleurs.violet }}>
+                      {resultat.exercicesPossiblesApres}
+                    </Text>
+                  </Text>
+                  <Text style={styles.vivierLibelle}>
+                    exercices que le tirage peut sortir
+                  </Text>
+                </View>
+              ) : null}
+              <Text style={styles.expliqueDeblocage}>
+                Ces nouveautés entrent dans le tirage dès ta prochaine séance. C'est ce qui fait
+                que les séances continuent de changer au lieu de tourner en rond.
+              </Text>
               {resultat.exercicesDebloques.map((exercice) => (
                 <View key={exercice.id} style={styles.ligneDeblocage}>
                   <Text style={styles.emojiDeblocage}>{exercice.emoji}</Text>
-                  <Text style={styles.nomDeblocage}>{exercice.nom}</Text>
-                  <Puce couleur={couleurs.texteFaible}>exercice</Puce>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.nomDeblocage}>{exercice.nom}</Text>
+                    <Text style={styles.detailDeblocage}>
+                      {LIBELLE_FAMILLE[exercice.famille]} · difficulté {exercice.difficulte}/5
+                    </Text>
+                  </View>
                 </View>
               ))}
               {resultat.modificateursDebloques.map((modificateur) => (
                 <View key={modificateur.id} style={styles.ligneDeblocage}>
                   <Text style={styles.emojiDeblocage}>{modificateur.emoji}</Text>
-                  <Text style={styles.nomDeblocage}>{modificateur.nom}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.nomDeblocage}>{modificateur.nom}</Text>
+                    <Text style={styles.detailDeblocage}>Nouvelle règle du jour</Text>
+                  </View>
                   <Puce couleur={couleurs.or} fond="rgba(255,200,87,0.15)">
                     règle
                   </Puce>
@@ -219,7 +246,23 @@ const styles = StyleSheet.create({
     paddingVertical: espace.s,
   },
   emojiDeblocage: { fontSize: 22 },
-  nomDeblocage: { ...texte.corps, color: couleurs.texte, flex: 1 },
+  nomDeblocage: { ...texte.corps, color: couleurs.texte },
+  detailDeblocage: { ...texte.minuscule, color: couleurs.texteFaible, marginTop: 2 },
+  vivier: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(124,92,255,0.10)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  vivierChiffres: { fontSize: 26, fontWeight: '800', color: couleurs.texteDoux },
+  vivierLibelle: { ...texte.minuscule, color: couleurs.texteFaible, marginTop: 2 },
+  expliqueDeblocage: {
+    ...texte.petit,
+    color: couleurs.texteDoux,
+    lineHeight: 19,
+    marginBottom: espace.s,
+  },
 
   barreBasse: {
     position: 'absolute',

@@ -9,7 +9,13 @@ import {
   xpPourDefi,
 } from '../src/moteur/defis';
 import { genererSeance } from '../src/moteur/seance';
-import { zonesDe, ZONES_PAR_FAMILLE } from '../src/moteur/exercices';
+import {
+  zonesDe,
+  ZONES_PAR_FAMILLE,
+  exercicesDebloquesAuNiveau,
+  exercicesDisponibles,
+  NIVEAU_DERNIER_DEBLOCAGE,
+} from '../src/moteur/exercices';
 import type { Focus, OptionsTirage, ZoneCorps } from '../src/moteur/types';
 
 /* ----------------------------------------------------------------------
@@ -175,5 +181,47 @@ test('chaque famille d\'effort sait quelles zones elle mobilise', () => {
   for (const [famille, zones] of Object.entries(ZONES_PAR_FAMILLE)) {
     if (famille === 'mobilite') continue;
     assert.ok(zones.length > 0, `la famille ${famille} ne déclare aucune zone`);
+  }
+});
+
+/* ---------------- La progression tient sur la durée ------------------- */
+
+test('chaque niveau jusqu\'au dernier palier débloque au moins un exercice', () => {
+  for (let niveau = 2; niveau <= NIVEAU_DERNIER_DEBLOCAGE; niveau++) {
+    const nouveaux = exercicesDebloquesAuNiveau(niveau);
+    assert.ok(
+      nouveaux.length > 0,
+      `le niveau ${niveau} ne débloque aucun exercice : monter de niveau n'y change rien`,
+    );
+  }
+});
+
+test('le vivier continue de grandir bien après les premières semaines', () => {
+  const config = { phase: 'bloc' as const, materielDispo: ['chaise', 'mur'] as const, silencieux: false };
+  const taille = (niveau: number) =>
+    exercicesDisponibles({ ...config, materielDispo: [...config.materielDispo], niveau }).length;
+
+  // Le niveau 10 est atteint en une quinzaine de séances : si tout était
+  // débloqué à ce stade, la promesse « les séances continuent de changer »
+  // ne tiendrait que deux semaines.
+  assert.ok(taille(15) > taille(10), 'plus rien de neuf entre les niveaux 10 et 15');
+  assert.ok(taille(20) > taille(15), 'plus rien de neuf entre les niveaux 15 et 20');
+  assert.ok(taille(25) > taille(20), 'plus rien de neuf entre les niveaux 20 et 25');
+
+  // Et la croissance doit être substantielle, pas symbolique.
+  assert.ok(
+    taille(25) >= taille(1) * 3,
+    `le vivier ne triple même pas : ${taille(1)} → ${taille(25)}`,
+  );
+});
+
+test('les exercices tardifs sont réellement plus exigeants', () => {
+  for (let niveau = 11; niveau <= NIVEAU_DERNIER_DEBLOCAGE; niveau++) {
+    for (const exercice of exercicesDebloquesAuNiveau(niveau)) {
+      assert.ok(
+        exercice.difficulte >= 4,
+        `${exercice.nom}, débloqué au niveau ${niveau}, n'a qu'une difficulté de ${exercice.difficulte}`,
+      );
+    }
   }
 });

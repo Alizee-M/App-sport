@@ -21,7 +21,7 @@ import {
   type StatsBrutes,
   type Enchainement,
 } from '../moteur/progression';
-import { exercicesDebloquesAuNiveau } from '../moteur/exercices';
+import { exercicesDebloquesAuNiveau, exercicesDisponibles } from '../moteur/exercices';
 import { modificateursDebloquesAuNiveau } from '../moteur/modificateurs';
 import { idsExercices } from '../moteur/seance';
 import {
@@ -82,6 +82,9 @@ export interface ResultatSeance {
   noeudValide: Noeud | null;
   zoneTerminee: Zone | null;
   serie: number;
+  /** Taille du vivier d'exercices avant et après la montée de niveau. */
+  exercicesPossiblesAvant: number;
+  exercicesPossiblesApres: number;
 }
 
 export interface ResultatDefi {
@@ -225,6 +228,17 @@ export const useJeu = create<EtatJeu>()(
           modificateursDebloques.push(...modificateursDebloquesAuNiveau(n));
         }
 
+        // Le nombre d'exercices que le tirage peut désormais sortir : sans
+        // ce chiffre, une montée de niveau n'affiche qu'une liste de noms
+        // sans dire ce qu'elle change concrètement.
+        const vivier = (niveau: number) =>
+          exercicesDisponibles({
+            phase: 'bloc',
+            niveau,
+            materielDispo: etat.reglages.materielDispo,
+            silencieux: etat.reglages.silencieux,
+          }).length;
+
         const entree: EntreeJournal = {
           id: identifiant(),
           date: new Date().toISOString(),
@@ -264,6 +278,8 @@ export const useJeu = create<EtatJeu>()(
           noeudValide,
           zoneTerminee,
           serie,
+          exercicesPossiblesAvant: vivier(niveauAvant),
+          exercicesPossiblesApres: vivier(niveauFinal),
         };
       },
 
