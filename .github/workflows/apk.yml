@@ -3,12 +3,20 @@ name: Construire l'APK Android
 # Produit un APK installable directement sur le téléphone, sans passer par
 # le Play Store ni par un compte Expo : le projet natif est régénéré à
 # chaque fois par `expo prebuild`, puis compilé par Gradle.
+#
+# Sur `main`, un build vert publie automatiquement une release. Comme le
+# fichier porte toujours le même nom, le lien de téléchargement ne change
+# jamais et peut être mis en favori sur le téléphone :
+#
+#   https://github.com/Alizee-M/App-sport/releases/latest/download/heros-de-salon.apk
 on:
   push:
     branches: ['**']
   workflow_dispatch:
-  release:
-    types: [published]
+
+# Nécessaire pour créer la release et y joindre l'APK.
+permissions:
+  contents: write
 
 jobs:
   apk:
@@ -47,7 +55,8 @@ jobs:
         run: npm ci
 
       # Le moteur de jeu est testable sans appareil : autant refuser de
-      # produire un APK à partir d'une logique cassée.
+      # produire un APK — et surtout de publier une release — à partir
+      # d'une logique cassée.
       - name: Vérifier les types et lancer les tests
         run: |
           npm run typecheck
@@ -64,28 +73,52 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
         working-directory: android
 
-      - name: Renommer l'APK
+      - name: Préparer l'APK
         id: apk
         run: |
           chemin=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
-          version=$(node -p "require('./app.json').expo.version")
-          nom="heros-de-salon-${version}-${GITHUB_SHA::7}.apk"
-          mv "$chemin" "$nom"
-          echo "nom=$nom" >> "$GITHUB_OUTPUT"
-          ls -lh "$nom"
+          # Nom fixe, sans version ni commit : c'est précisément ce qui
+          # rend l'adresse « releases/latest/download » permanente.
+          mv "$chemin" heros-de-salon.apk
+          echo "version=$(node -p "require('./app.json').expo.version")" >> "$GITHUB_OUTPUT"
+          echo "taille=$(du -h heros-de-salon.apk | cut -f1)" >> "$GITHUB_OUTPUT"
+          ls -lh heros-de-salon.apk
 
       - name: Publier l'APK en artefact
         uses: actions/upload-artifact@v4
         with:
           name: heros-de-salon-apk
-          path: ${{ steps.apk.outputs.nom }}
+          path: heros-de-salon.apk
           retention-days: 90
           if-no-files-found: error
 
-      # Sur une release publiée, l'APK est joint pour être téléchargeable
-      # depuis le téléphone en un seul lien.
-      - name: Joindre l'APK à la release
-        if: github.event_name == 'release'
+      # Toute version arrivée sur `main` a passé les types et les tests :
+      # elle est publiable telle quelle. La release est étiquetée avec la
+      # version de app.json — republier la même version met simplement à
+      # jour l'APK au lieu d'empiler les entrées.
+      - name: Publier la release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.apk.outputs.nom }}
+          tag_name: v${{ steps.apk.outputs.version }}
+          name: Héros de Salon v${{ steps.apk.outputs.version }}
+          make_latest: true
+          files: heros-de-salon.apk
+          body: |
+            ## 📲 Installer sur le téléphone
+
+            **[⬇️ Télécharger heros-de-salon.apk](https://github.com/Alizee-M/App-sport/releases/latest/download/heros-de-salon.apk)** (${{ steps.apk.outputs.taille }})
+
+            Ouvre ce lien **depuis le téléphone**, puis l'APK une fois
+            téléchargé. Android demandera d'autoriser l'installation
+            depuis cette source : c'est la procédure normale hors Play
+            Store, à accepter une seule fois.
+
+            Les mises à jour s'installent par-dessus la précédente, sans
+            désinstaller et sans perdre ta progression.
+
+            ---
+
+            Version ${{ steps.apk.outputs.version }} · commit
+            ${{ github.sha }} · types et 61 tests au vert.
+            Architectures : arm64-v8a et armeabi-v7a.

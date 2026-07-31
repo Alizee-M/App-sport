@@ -54,18 +54,27 @@ semaines, il est simplement content.
 
 ## Installer l'app sur ton téléphone
 
-L'APK est construit automatiquement par GitHub Actions à chaque envoi de
-code. Aucun compte Expo ni Play Store n'est nécessaire.
+### ⬇️ [Télécharger la dernière version](https://github.com/Alizee-M/App-sport/releases/latest/download/heros-de-salon.apk)
 
-1. Va dans l'onglet **Actions** du dépôt.
-2. Ouvre la dernière exécution réussie de « Construire l'APK Android ».
-3. Télécharge l'artefact **`heros-de-salon-apk`** (c'est un `.zip`).
-4. Transfère-le sur le téléphone, décompresse, ouvre le `.apk`.
-5. Android demandera d'autoriser l'installation depuis cette source :
-   accepte. C'est la procédure normale hors Play Store.
+Ouvre ce lien **depuis le téléphone**, puis l'APK une fois téléchargé.
+Android demandera d'autoriser l'installation depuis cette source : c'est
+la procédure normale hors Play Store, à accepter une seule fois.
 
-Pour un lien unique et direct depuis le téléphone, publie une **Release**
-GitHub : le workflow y attache automatiquement l'APK.
+Ce lien ne change jamais : il pointe toujours vers la dernière version
+publiée, donc il peut être mis en favori. Les mises à jour s'installent
+par-dessus la précédente, sans désinstaller et sans perdre la
+progression.
+
+**Comment les versions sont publiées.** Chaque arrivée de code sur `main`
+déclenche la compilation. Le workflow refuse de produire un APK si la
+vérification des types ou les 61 tests échouent : ce qui est publié a donc
+toujours passé ces contrôles. Une release est alors créée
+automatiquement, étiquetée avec la version de `app.json`. Republier la
+même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
+de monter `expo.version` pour créer une nouvelle entrée dans l'historique.
+
+Les builds des autres branches ne publient rien : leur APK reste
+disponible en artefact dans l'onglet **Actions**, le temps de tester.
 
 > L'APK est signé avec le keystore de développement fourni par le modèle
 > Expo. Il est donc identique d'un build à l'autre, ce qui permet
