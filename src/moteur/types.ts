@@ -148,7 +148,7 @@ export interface Bloc {
   progressionSecondes?: number;
 }
 
-export type TypeSeance = 'libre' | 'aventure' | 'boss';
+export type TypeSeance = 'libre' | 'aventure' | 'boss' | 'quete';
 
 export interface Seance {
   /** Graine du tirage : rejouer la même graine redonne la même séance. */

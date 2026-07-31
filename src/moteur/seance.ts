@@ -19,6 +19,7 @@ import {
 } from './modificateurs';
 import { xpPotentielSeance } from './progression';
 import { construireEtapes, dureeTotaleEtapes } from './deroulement';
+import type { LigneQuete } from './systeme';
 
 /* ----------------------------------------------------------------------
  * Le tirage d'une séance.
@@ -504,6 +505,135 @@ export function genererSeance(options: OptionsTirage): Seance {
       bonusXpCumule(modificateurs),
     ),
   };
+}
+
+/* ------------------------ La quête journalière ------------------------ */
+
+/**
+ * Découpe un objectif de quête en séries faisables.
+ *
+ * On ne cherche que des découpages exacts : « 3 tours de 15 » doit faire
+ * exactement les 45 répétitions demandées. Annoncer 45 et en faire faire
+ * 48 parce que le compte tombe mal serait la même trahison qu'une durée
+ * qui ne correspond pas au déroulé.
+ */
+export function decouperObjectif(
+  objectif: number,
+  mesure: 'reps' | 'temps',
+): { tours: number; parTour: number } {
+  const ideal = mesure === 'reps' ? 12 : 40;
+  const minimum = mesure === 'reps' ? 5 : 15;
+
+  let meilleure = { tours: 1, parTour: objectif };
+  let meilleurEcart = Math.abs(objectif - ideal);
+
+  for (let tours = 2; tours <= 6; tours++) {
+    if (objectif % tours !== 0) continue;
+    const parTour = objectif / tours;
+    // En dessous, ce n'est plus une série, c'est un aller-retour.
+    if (parTour < minimum) continue;
+
+    const ecart = Math.abs(parTour - ideal);
+    if (ecart < meilleurEcart) {
+      meilleure = { tours, parTour };
+      meilleurEcart = ecart;
+    }
+  }
+  return meilleure;
+}
+
+/** Temps à laisser pour une série de répétitions, arrondi à 5 s. */
+function fenetrePourReps(reps: number): number {
+  return Math.max(20, Math.min(75, Math.round((reps * 3) / 5) * 5));
+}
+
+/**
+ * Transforme la quête journalière en séance guidée.
+ *
+ * Une quête affichée sous forme de liste à cocher se fait « quand on y
+ * pense », c'est-à-dire jamais. En faire une séance lui donne le même
+ * accompagnement qu'au reste de l'app : échauffement adapté, minuteur,
+ * repères sonores, retour au calme.
+ *
+ * Le contrat est strict : la somme des tours redonne exactement l'objectif
+ * annoncé sur l'écran de statut.
+ */
+export function genererSeanceQuete(
+  quete: { lignes: LigneQuete[]; xpRecompense: number },
+  options: OptionsTirage,
+): Seance {
+  const alea = creerAlea(options.seed);
+
+  const filtreBase = {
+    niveau: options.niveau,
+    materielDispo: options.materielDispo,
+    silencieux: options.silencieux,
+  };
+
+  /* --- Un bloc par ligne de quête ---
+   * Regrouper les trois exercices en circuit obligerait à un nombre de
+   * tours commun, donc à trahir au moins un des trois objectifs. */
+  const blocs: Bloc[] = [];
+  for (const ligne of quete.lignes) {
+    const exercice = exerciceParId(ligne.exerciceId);
+    if (!exercice) continue;
+
+    const mesure = ligne.unite === 'reps' ? 'reps' : 'temps';
+    const { tours, parTour } = decouperObjectif(ligne.objectif, mesure);
+
+    blocs.push({
+      nom: exercice.nom,
+      tours,
+      travailSec: mesure === 'reps' ? fenetrePourReps(parTour) : parTour,
+      reposSec: 30,
+      exercices: [
+        mesure === 'reps'
+          ? { exercice, reps: parTour }
+          : { exercice, secondes: parTour },
+      ],
+    });
+  }
+
+  const zonesVisees = zonesSollicitees(blocs);
+
+  const poolEchauffement = exercicesDisponibles({ ...filtreBase, phase: 'echauffement' });
+  const echauffement = tirerPondere(
+    alea,
+    poolEchauffement,
+    Math.min(3, poolEchauffement.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
+  const poolEtirements = exercicesDisponibles({ ...filtreBase, phase: 'retour_calme' });
+  const retourCalme = tirerPondere(
+    alea,
+    poolEtirements,
+    Math.min(2, poolEtirements.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
+  const seance: Seance = {
+    seed: options.seed,
+    type: 'quete',
+    titre: 'Quête journalière',
+    echauffement,
+    blocs,
+    retourCalme,
+    // Une quête est déjà une contrainte imposée : lui ajouter une règle du
+    // jour tirée au sort en ferait une double peine.
+    modificateurs: [],
+    dureeEstimeeSec: 0,
+    dureeDemandeeMin: 0,
+    intensite: options.intensite,
+    focus: 'complet',
+    // La récompense est celle qu'annonce la quête, ni plus ni moins : le
+    // barème habituel à la minute donnerait un autre chiffre que celui
+    // affiché sur l'écran de statut.
+    xpPotentiel: quete.xpRecompense,
+  };
+
+  const dureeEstimeeSec = dureeTotaleEtapes(construireEtapes(seance));
+  return { ...seance, dureeEstimeeSec, dureeDemandeeMin: Math.round(dureeEstimeeSec / 60) };
 }
 
 /**

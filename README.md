@@ -21,10 +21,16 @@ moments qui comptent. Hommage au genre, pas copie — aucun nom, personnage
 ni visuel d'une œuvre existante n'est repris.
 
 - **Quête journalière** tirée par jour calendaire, identique toute la
-  journée. L'honorer renforce l'enchaînement ; l'ignorer coûte de l'XP et
-  brise la série. La sanction est plafonnée à trois jours et ne fait
-  **jamais perdre un rang** : une app qui punit durement fabrique de
-  l'évitement, on n'ouvre plus l'app pour ne pas voir la sanction.
+  journée. Elle **se joue comme une vraie séance** — échauffement ciblé,
+  minuteur, repères sonores, retour au calme — et se valide toute seule
+  quand elle est menée au bout. Une liste à cocher se fait « quand on y
+  pense », c'est-à-dire jamais. Le découpage en séries redonne toujours
+  *exactement* l'objectif annoncé : 45 répétitions, c'est 3 tours de 15,
+  jamais 4 tours de 12 parce que le compte tombait mal.
+  L'ignorer coûte de l'XP et brise la série. La sanction est plafonnée à
+  trois jours et ne fait **jamais perdre un rang** : une app qui punit
+  durement fabrique de l'évitement, on n'ouvre plus l'app pour ne pas voir
+  la sanction.
 - **Points d'attribut** à répartir soi-même à chaque montée de niveau.
   Investir dans une stat rend les séances de cette spécialité plus
   rémunératrices, jusqu'à +30 %.
@@ -111,9 +117,17 @@ imposés.
 
 Un palier ne se valide pas d'un clic. L'app **compte le volume réellement
 effectué**, séance après séance ; le test ne s'ouvre qu'une fois la
-pratique accumulée (par exemple 300 pompes pike avant d'essayer le poirier
-tête au mur). Le test lui-même se valide sur parole — aucun téléphone ne
-peut vérifier un équilibre — mais on ne peut pas sauter les marches.
+pratique accumulée. Le test lui-même se valide sur parole — aucun
+téléphone ne peut vérifier un équilibre — mais on ne peut pas sauter les
+marches.
+
+L'écran d'une voie répond à une seule question : *qu'est-ce que je dois
+faire, concrètement ?* D'où l'exercice nommé en grand avec sa consigne, le
+compte exact — « 182 sur 300 répétitions, il reste 118 à faire en séance »
+— et le chemin complet des étapes suivantes. Un pourcentage d'avancement
+ne dit pas quoi faire ce soir. Dans l'aperçu du tirage, l'exercice de
+l'étape en cours porte une mention **⭐ Voie de compétence**, pour ne pas
+le confondre avec le reste du tirage.
 
 ### 🗺️ L'aventure
 Vingt-quatre étapes réparties en cinq zones, chacune close par un boss
@@ -147,6 +161,11 @@ pas aussi longtemps après des extensions de mollets qu'après des burpees.
 Il est redistribué à l'intérieur du bloc plutôt qu'ajouté, si bien que la
 séance tient toujours dans le temps annoncé.
 
+Enfin, **tirer une séance a son propre bouton dans la barre du bas**,
+atteignable depuis n'importe quel écran. C'est l'action que l'app existe
+pour déclencher : elle n'a rien à faire au milieu d'une page qu'il faut
+d'abord ouvrir puis faire défiler.
+
 ---
 
 ## Installer l'app sur ton téléphone
@@ -164,7 +183,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 130 tests échouent : ce qui est publié a donc
+vérification des types ou les 140 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -186,7 +205,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 130 tests sur le moteur de jeu
+npm test          # 140 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -223,7 +242,7 @@ src/moteur/          logique pure, testée (aucune dépendance UI)
   systeme.ts           rangs E→S, points d'attribut, quête journalière
   competences.ts       voies, paliers, volume pratiqué, pilotage du tirage
   modificateurs.ts     les 20 cartes « règles du jour »
-  seance.ts            le tirage : contraintes, pondérations, dosage
+  seance.ts            le tirage, et la mise en séance de la quête du jour
   deroulement.ts       la séance dépliée étape par étape
   progression.ts       XP, niveaux, stats, séries de jours, titres
   aventure.ts          zones, nœuds, boss
@@ -234,7 +253,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               130 tests node:test
+tests/               140 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -260,4 +279,8 @@ Les garde-fous du tirage passent avant tout le reste :
   pas dériver la durée de la séance ;
 - les paliers d'une voie vont bien du plus facile au plus difficile, une
   voie active fait sortir son exercice dans au moins 85 % des tirages, et
-  cette priorité ne casse aucune contrainte de niveau, matériel ou bruit.
+  cette priorité ne casse aucune contrainte de niveau, matériel ou bruit ;
+- la séance de quête journalière fait **exactement** le compte annoncé
+  (tours × répétitions = objectif), garde échauffement et retour au calme,
+  respecte le matériel et le mode appartement, et tient entre 3 et 30
+  minutes à tous les niveaux.

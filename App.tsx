@@ -41,6 +41,7 @@ const theme: Theme = {
 const ICONES: Record<keyof ParamsOnglets, string> = {
   Camp: '👤',
   Aventure: '🗺️',
+  Tirer: '🎲',
   Defis: '⚡',
   Journal: '📖',
 };
@@ -48,9 +49,28 @@ const ICONES: Record<keyof ParamsOnglets, string> = {
 const LIBELLES: Record<keyof ParamsOnglets, string> = {
   Camp: 'Statut',
   Aventure: 'Donjons',
+  Tirer: 'Séance',
   Defis: 'Défis',
   Journal: 'Journal',
 };
+
+/**
+ * L'onglet central n'affiche jamais rien : son appui est détourné vers
+ * l'écran de tirage. C'est le seul moyen d'avoir le bouton « lancer une
+ * séance » à portée de pouce depuis les cinq écrans.
+ */
+function EcranJamaisAffiche() {
+  return null;
+}
+
+/** Le dé, posé en relief au milieu de la barre. */
+function PastilleTirage() {
+  return (
+    <View style={styles.pastille}>
+      <Text style={styles.pastilleDe}>🎲</Text>
+    </View>
+  );
+}
 
 function BarreOnglets() {
   return (
@@ -62,19 +82,37 @@ function BarreOnglets() {
         tabBarStyle: {
           backgroundColor: couleurs.surface,
           borderTopColor: couleurs.bordure,
-          height: 62,
+          // La pastille du tirage occupe toute la hauteur utile : la barre
+          // est un peu plus haute pour qu'elle ne déborde pas, plutôt que
+          // remontée en négatif, ce qu'Android rogne selon les appareils.
+          height: 68,
           paddingTop: 6,
           paddingBottom: 8,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         tabBarLabel: LIBELLES[route.name],
-        tabBarIcon: ({ focused }: { focused: boolean }) => (
-          <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>{ICONES[route.name]}</Text>
-        ),
+        tabBarIcon: ({ focused }: { focused: boolean }) =>
+          route.name === 'Tirer' ? (
+            <PastilleTirage />
+          ) : (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>{ICONES[route.name]}</Text>
+          ),
       })}
     >
       <Onglets.Screen name="Camp" component={Camp} />
       <Onglets.Screen name="Aventure" component={Aventure} />
+      <Onglets.Screen
+        name="Tirer"
+        component={EcranJamaisAffiche}
+        options={{ tabBarLabel: 'Séance', tabBarActiveTintColor: couleurs.accent }}
+        listeners={({ navigation }) => ({
+          tabPress: (evenement) => {
+            // Sans ça, l'onglet afficherait sa page vide avant de naviguer.
+            evenement.preventDefault();
+            navigation.getParent()?.navigate('Tirage');
+          },
+        })}
+      />
       <Onglets.Screen name="Defis" component={Defis} />
       <Onglets.Screen name="Journal" component={Journal} />
     </Onglets.Navigator>
@@ -179,4 +217,19 @@ const styles = StyleSheet.create({
   },
   logo: { fontSize: 56 },
   nom: { ...texte.section, color: couleurs.accent, marginTop: 16 },
+
+  pastille: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: couleurs.accent,
+    shadowColor: couleurs.accent,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  pastilleDe: { fontSize: 20 },
 });

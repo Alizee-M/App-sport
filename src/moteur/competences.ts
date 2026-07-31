@@ -263,6 +263,36 @@ export function cumulerVolumes(cumul: Volumes, ajout: Volumes): Volumes {
 
 /* --------------------------- L'avancement ----------------------------- */
 
+export interface AvancementPratique {
+  /** Volume déjà accumulé sur l'exercice du palier. */
+  fait: number;
+  /** Volume à atteindre pour ouvrir le test. */
+  cible: number;
+  /** Ce qu'il reste à faire, jamais négatif. */
+  reste: number;
+  unite: 'reps' | 'secondes';
+}
+
+/**
+ * Le compte concret de ce qui reste à faire.
+ *
+ * Un pourcentage ne dit pas quoi faire ce soir. « Il te reste 118
+ * répétitions de pompes pike », si.
+ */
+export function avancementPratique(palier: Palier, volumes: Volumes): AvancementPratique {
+  const fait = volumes[palier.exerciceId] ?? { reps: 0, secondes: 0 };
+  const unite: 'reps' | 'secondes' = palier.pratique.reps ? 'reps' : 'secondes';
+  const cible = (unite === 'reps' ? palier.pratique.reps : palier.pratique.secondes) ?? 0;
+  const accompli = unite === 'reps' ? fait.reps : fait.secondes;
+
+  return {
+    fait: Math.min(accompli, cible),
+    cible,
+    reste: Math.max(0, cible - accompli),
+    unite,
+  };
+}
+
 export interface EtatPalier {
   palier: Palier;
   exercice: Exercice | undefined;
@@ -272,6 +302,8 @@ export interface EtatPalier {
   courant: boolean;
   /** Part de la pratique requise déjà accomplie, de 0 à 1. */
   pratique: number;
+  /** Le compte exact : ce qui est fait, ce qui reste. */
+  avancement: AvancementPratique;
   /** Le test peut être tenté : la pratique est suffisante. */
   testOuvert: boolean;
 }
@@ -310,6 +342,7 @@ export function etatVoie(voie: Voie, valides: string[], volumes: Volumes): EtatP
       valide,
       courant,
       pratique,
+      avancement: avancementPratique(palier, volumes),
       testOuvert: courant && pratique >= 1,
     };
   });

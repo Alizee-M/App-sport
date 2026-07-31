@@ -16,6 +16,12 @@ export type ParamsPile = {
 export type ParamsOnglets = {
   Camp: undefined;
   Aventure: undefined;
+  /**
+   * Onglet purement décoratif : il n'affiche rien et détourne l'appui vers
+   * l'écran de tirage. Lancer une séance est la seule action qu'on veut à
+   * portée de pouce depuis n'importe où dans l'app.
+   */
+  Tirer: undefined;
   Defis: undefined;
   Journal: undefined;
 };

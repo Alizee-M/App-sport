@@ -95,6 +95,18 @@ export default function Bilan({ navigation, route }: Props) {
           </>
         ) : null}
 
+        {/* ---------------------- Quête journalière ----------------------- */}
+        {resultat.queteJournaliereValidee ? (
+          <>
+            <TitreSection>Quête journalière</TitreSection>
+            <Panneau couleurBordure={couleurs.succes}>
+              <Text style={styles.queteJour}>
+                📜 Menée au bout : la quête du jour est honorée. L'enchaînement tient.
+              </Text>
+            </Panneau>
+          </>
+        ) : null}
+
         {/* ---------------------------- Quête ----------------------------- */}
         {resultat.noeudValide ? (
           <>
@@ -260,6 +272,7 @@ const styles = StyleSheet.create({
   emojiQuete: { fontSize: 30 },
   nomQuete: { ...texte.corps, color: couleurs.texte, fontWeight: '800' },
   bonusQuete: { ...texte.petit, color: couleurs.succes, marginTop: 2 },
+  queteJour: { ...texte.petit, color: couleurs.texteDoux, lineHeight: 20 },
   zoneFinie: {
     ...texte.petit,
     color: couleurs.texteDoux,

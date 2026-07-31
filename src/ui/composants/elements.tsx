@@ -99,17 +99,20 @@ export function CarteExercice({
   prescrit,
   onRetirer,
   index,
+  marque,
 }: {
   prescrit: ExercicePrescrit;
   onRetirer?: () => void;
   index?: number;
+  /** Mention affichée sous le nom : « ⭐ voie de compétence », par exemple. */
+  marque?: string;
 }) {
   const { exercice } = prescrit;
   const dose =
     exercice.mesure === 'reps' ? `${prescrit.reps} répétitions` : `${prescrit.secondes} secondes`;
 
   return (
-    <View style={styles.carteExercice}>
+    <View style={[styles.carteExercice, marque ? styles.carteMarquee : null]}>
       <Text style={styles.carteEmoji}>{exercice.emoji}</Text>
       <View style={{ flex: 1 }}>
         <Text style={styles.carteNom} numberOfLines={2}>
@@ -117,6 +120,7 @@ export function CarteExercice({
           {exercice.nom}
         </Text>
         <Text style={styles.carteDose}>{dose}</Text>
+        {marque ? <Text style={styles.carteMarque}>{marque}</Text> : null}
       </View>
       {onRetirer ? (
         <Pressable
@@ -338,6 +342,8 @@ const styles = StyleSheet.create({
   carteEmoji: { fontSize: 26 },
   carteNom: { ...texte.corps, color: couleurs.texte, fontWeight: '700' },
   carteDose: { ...texte.petit, color: couleurs.accent, marginTop: 2, fontWeight: '700' },
+  carteMarquee: { borderWidth: 1, borderColor: couleurs.or },
+  carteMarque: { ...texte.minuscule, color: couleurs.or, marginTop: 3, fontWeight: '700' },
   boutonRetirer: {
     width: 40,
     height: 40,

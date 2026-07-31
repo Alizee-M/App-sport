@@ -309,6 +309,14 @@ function Apercu({
                     key={`${prescrit.exercice.id}-${indexExo}`}
                     prescrit={prescrit}
                     index={indexExo + 1}
+                    // Repérer l'exercice de la voie évite de le confondre
+                    // avec le reste du tirage : c'est celui qui fait avancer
+                    // l'étape en cours, et celui qu'on a intérêt à soigner.
+                    marque={
+                      options.exercicePrincipal === prescrit.exercice.id
+                        ? '⭐ Voie de compétence · fait avancer ton étape'
+                        : undefined
+                    }
                     onRetirer={() => onRetirerExercice(indexBloc, indexExo)}
                   />
                 ))}

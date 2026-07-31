@@ -72,6 +72,9 @@ const MULTIPLICATEUR_TYPE: Record<TypeSeance, number> = {
   libre: 1,
   aventure: 1.15,
   boss: 1.5,
+  // La quête journalière fixe elle-même sa récompense : ce multiplicateur
+  // ne sert pas, l'XP promise est celle annoncée par la quête.
+  quete: 1,
 };
 
 /**

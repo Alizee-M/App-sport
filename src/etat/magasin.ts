@@ -118,6 +118,8 @@ export interface ResultatSeance {
   pointsGagnes: number;
   /** Vrai si cette séance vient d'achever la quête-récompense en cours. */
   recompenseDebloquee: boolean;
+  /** Vrai si c'était la quête journalière et qu'elle a été menée au bout. */
+  queteJournaliereValidee: boolean;
 }
 
 export interface ResultatDefi {
@@ -341,6 +343,18 @@ export const useJeu = create<EtatJeu>()(
 
         const pointsGagnes = Math.max(0, niveauFinal - niveauAvant) * POINTS_PAR_NIVEAU;
 
+        // La quête journalière jouée en séance se valide toute seule — mais
+        // seulement si elle est menée au bout. Une quête, contrairement à
+        // une séance libre, est un objectif chiffré : en faire la moitié,
+        // c'est ne pas l'avoir faite.
+        const queteJournaliereValidee =
+          seance.type === 'quete' &&
+          ratio >= 0.999 &&
+          !etat.joursQueteFaite.includes(aujourdhui);
+        const joursQueteFaite = queteJournaliereValidee
+          ? [aujourdhui, ...etat.joursQueteFaite].slice(0, 90)
+          : etat.joursQueteFaite;
+
         const entree: EntreeJournal = {
           id: identifiant(),
           date: new Date().toISOString(),
@@ -368,6 +382,7 @@ export const useJeu = create<EtatJeu>()(
           // des voies de compétence.
           volumes: cumulerVolumes(etat.volumes, volumeRealise(seance, ratio)),
           queteRecompense,
+          joursQueteFaite,
           pointsDisponibles: etat.pointsDisponibles + pointsGagnes,
           seancePreparee: null,
           noeudVise: null,
@@ -390,6 +405,7 @@ export const useJeu = create<EtatJeu>()(
           kcalDepensees,
           pointsGagnes,
           recompenseDebloquee,
+          queteJournaliereValidee,
         };
       },
 

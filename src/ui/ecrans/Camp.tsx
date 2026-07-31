@@ -39,7 +39,8 @@ import {
   progressionVoie,
 } from '../../moteur/competences';
 import { exerciceParId } from '../../moteur/exercices';
-import { genererSeance } from '../../moteur/seance';
+import { genererSeance, genererSeanceQuete } from '../../moteur/seance';
+import { grainePourJour } from '../../moteur/systeme';
 import { EMOJI_STAT, LIBELLE_STAT, STATS } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
 
@@ -68,6 +69,8 @@ export default function Camp() {
   const volumes = useJeu((e) => e.volumes);
   const joursQueteFaite = useJeu((e) => e.joursQueteFaite);
   const validerQuete = useJeu((e) => e.validerQueteJournaliere);
+  const historiqueIds = useJeu((e) => e.historiqueIds);
+  const preparerSeance = useJeu((e) => e.preparerSeance);
 
   const niveau = niveauDepuisXp(xpTotal);
   const palier = palierPourNiveau(niveau.niveau);
@@ -88,6 +91,24 @@ export default function Camp() {
     [aujourdhui, niveau.niveau, reglages.materielDispo, reglages.silencieux],
   );
   const journaliereFaite = joursQueteFaite.includes(aujourdhui);
+
+  /* La quête peut se jouer comme une vraie séance : échauffement adapté,
+   * minuteur, sons, retour au calme. Une liste à cocher se fait « quand on
+   * y pense » ; une séance guidée se fait. */
+  const seanceQuete = useMemo(
+    () =>
+      genererSeanceQuete(journaliere, {
+        dureeMin: 0,
+        intensite: reglages.intensite,
+        focus: 'complet',
+        materielDispo: reglages.materielDispo,
+        silencieux: reglages.silencieux,
+        niveau: niveau.niveau,
+        historiqueIds,
+        seed: grainePourJour(aujourdhui),
+      }),
+    [journaliere, reglages, niveau.niveau, historiqueIds, aujourdhui],
+  );
 
   /* Dépense d'une séance type, pour traduire une quête en nombre de
    * séances plutôt qu'en calories abstraites. */
@@ -167,8 +188,8 @@ export default function Camp() {
       <View style={{ height: espace.l }} />
       <BulleCoach texte={propos} />
 
-      <View style={{ height: espace.xl }} />
-      <Bouton titre="Tirer une séance" icone="🎲" onPress={() => navigation.navigate('Tirage')} />
+      {/* Le tirage a son propre bouton dans la barre du bas : le dupliquer
+          ici pousserait l'action principale sous le pli de l'écran. */}
 
       {/* ------------------------- Quête journalière ------------------------ */}
       <View style={{ height: espace.xl }} />
@@ -193,14 +214,27 @@ export default function Camp() {
               />
             ))}
             <Text style={styles.avertissementQuete}>
-              À faire dans la journée, en une ou plusieurs fois. Ne pas l'honorer brise
-              l'enchaînement et coûte un peu d'expérience.
+              À faire dans la journée. Ne pas l'honorer brise l'enchaînement et coûte un
+              peu d'expérience.
             </Text>
             <Bouton
-              titre={`Valider · +${journaliere.xpRecompense} XP`}
-              variante="secondaire"
-              onPress={confirmerQuete}
+              titre={`Lancer la quête · ~${Math.round(seanceQuete.dureeEstimeeSec / 60)} min`}
+              icone="▶"
+              onPress={() => {
+                preparerSeance(seanceQuete, null);
+                navigation.navigate('Seance');
+              }}
               style={{ marginTop: espace.m }}
+            />
+            <Text style={styles.detailLancement}>
+              Séance guidée : échauffement adapté, minuteur, sons, retour au calme. Menée
+              au bout, elle valide la quête toute seule.
+            </Text>
+            <Bouton
+              titre="Je l'ai faite sans l'app"
+              variante="fantome"
+              onPress={confirmerQuete}
+              style={{ marginTop: espace.s }}
             />
           </>
         )}
@@ -415,6 +449,13 @@ const styles = StyleSheet.create({
     color: couleurs.texteFaible,
     marginTop: espace.m,
     lineHeight: 16,
+  },
+  detailLancement: {
+    ...texte.minuscule,
+    color: couleurs.texteFaible,
+    marginTop: espace.s,
+    lineHeight: 16,
+    textAlign: 'center',
   },
 
   ligneRecompense: { flexDirection: 'row', alignItems: 'center', gap: espace.m },

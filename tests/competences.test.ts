@@ -7,6 +7,7 @@ import {
   volumeRealise,
   cumulerVolumes,
   partPratique,
+  avancementPratique,
   etatVoie,
   palierCourant,
   voieAchevee,
@@ -169,6 +170,35 @@ test('un palier ne s\'ouvre qu\'après avoir réellement pratiqué', () => {
     [premier.exerciceId]: { reps: (premier.pratique.reps ?? 0) * 10, secondes: 0 },
   };
   assert.equal(partPratique(premier, beaucoup), 1);
+});
+
+test('l\'avancement dit ce qui reste à faire, pas seulement un pourcentage', () => {
+  // Un pourcentage ne dit pas quoi faire ce soir. « Il te reste 60
+  // répétitions de pompes pike », si.
+  const voie = voieParId('equilibre')!;
+  const premier = voie.paliers[0];
+  const cible = premier.pratique.reps!;
+
+  const vide = avancementPratique(premier, {});
+  assert.equal(vide.fait, 0);
+  assert.equal(vide.cible, cible);
+  assert.equal(vide.reste, cible);
+  assert.equal(vide.unite, 'reps');
+
+  const entame = avancementPratique(premier, {
+    [premier.exerciceId]: { reps: cible - 60, secondes: 0 },
+  });
+  assert.equal(entame.reste, 60);
+
+  // En faire plus que demandé n'affiche jamais un reste négatif.
+  const depasse = avancementPratique(premier, {
+    [premier.exerciceId]: { reps: cible * 3, secondes: 0 },
+  });
+  assert.equal(depasse.reste, 0);
+  assert.equal(depasse.fait, cible);
+
+  // Les paliers tenus au temps se comptent en secondes.
+  assert.equal(avancementPratique(voie.paliers[1], {}).unite, 'secondes');
 });
 
 test('le test reste fermé tant que la pratique est insuffisante', () => {

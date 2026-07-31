@@ -133,7 +133,15 @@ function LigneJournal({ entree }: { entree: EntreeJournal }) {
   return (
     <View style={styles.entree}>
       <Text style={styles.entreeEmoji}>
-        {entree.defi ? '⚡' : entree.type === 'boss' ? '👹' : entree.type === 'aventure' ? '🗺️' : '🎲'}
+        {entree.defi
+          ? '⚡'
+          : entree.type === 'boss'
+            ? '👹'
+            : entree.type === 'aventure'
+              ? '🗺️'
+              : entree.type === 'quete'
+                ? '📜'
+                : '🎲'}
       </Text>
       <View style={{ flex: 1 }}>
         <Text style={styles.entreeTitre} numberOfLines={1}>
