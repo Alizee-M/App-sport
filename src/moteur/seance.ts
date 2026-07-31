@@ -341,14 +341,30 @@ function tirerPourBloc(
   cibleDifficulte: number,
 ): Exercice[] {
   return tirerPondere(alea, pool, nombre, (exercice, dejaTires) => {
+    const principal = options.exercicePrincipal === exercice.id;
+    const soutien = options.exercicesPrioritaires?.includes(exercice.id) ?? false;
+
     let poids = 1;
     poids *= poidsFraicheur(exercice, options.historiqueIds);
-    poids *= poidsDifficulte(exercice, cibleDifficulte);
     poids *= poidsFocus(exercice, options.focus);
+
+    if (principal) {
+      // L'exercice du palier de compétence doit sortir presque à chaque
+      // séance, sinon la voie n'avance pas. Il échappe aussi au filtre de
+      // difficulté : on travaille le geste que la voie impose, même s'il
+      // est plus facile que le niveau atteint. Sans cette exemption, une
+      // voie ne serait qu'un tableau de bord.
+      poids *= 40;
+    } else if (soutien) {
+      poids *= 3 * poidsDifficulte(exercice, cibleDifficulte);
+    } else {
+      poids *= poidsDifficulte(exercice, cibleDifficulte);
+    }
 
     // Déjà présent ailleurs dans la séance : très improbable, mais possible
     // si le deck disponible est trop petit pour remplir tous les blocs.
-    if (dejaDansSeance.has(exercice.id)) poids *= 0.05;
+    // Un palier de compétence, lui, gagne à revenir sur plusieurs blocs.
+    if (dejaDansSeance.has(exercice.id)) poids *= principal ? 0.5 : 0.05;
 
     // Une famille pas encore représentée dans ce bloc passe devant, pour
     // éviter quatre exercices de jambes d'affilée. Mais quand un focus est

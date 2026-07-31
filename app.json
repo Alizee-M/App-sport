@@ -2,7 +2,7 @@
   "expo": {
     "name": "Héros de Salon",
     "slug": "heros-de-salon",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "herosdesalon",
@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.alizeem.herosdesalon",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "backgroundColor": "#0c0e16",
         "foregroundImage": "./assets/android-icon-foreground.png",

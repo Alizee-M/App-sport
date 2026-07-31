@@ -20,6 +20,7 @@ import { genererSeance, retirerExercice, retirerModificateur } from '../../moteu
 import { graineAleatoire } from '../../moteur/alea';
 import { noeudParId, optionsPourNoeud } from '../../moteur/aventure';
 import { plageRepos } from '../../moteur/deroulement';
+import { programmeVoie, voieParId } from '../../moteur/competences';
 import { LIBELLE_MATERIEL, LIBELLE_FOCUS, LIBELLE_INTENSITE } from '../../moteur/types';
 import type { Focus, Intensite, Materiel, OptionsTirage, Seance } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
@@ -48,17 +49,28 @@ export default function Tirage({ navigation, route }: Props) {
   const reglages = useJeu((e) => e.reglages);
   const majReglages = useJeu((e) => e.majReglages);
   const preparerSeance = useJeu((e) => e.preparerSeance);
+  const voieActive = useJeu((e) => e.voieActive);
+  const paliersValides = useJeu((e) => e.paliersValides);
 
   const niveau = niveauDepuisXp(xpTotal).niveau;
   const [seance, setSeance] = useState<Seance | null>(null);
 
   const options = useMemo<OptionsTirage>(() => {
+    // La voie suivie programme le tirage : sans ça, elle ne serait qu'un
+    // tableau de bord et le hasard proposerait autre chose.
+    const voie = voieActive ? voieParId(voieActive) : undefined;
+    const programme = voie
+      ? programmeVoie(voie, paliersValides)
+      : { principal: null, soutiens: [] };
+
     const base = {
       materielDispo: reglages.materielDispo,
       silencieux: reglages.silencieux,
       niveau,
       historiqueIds,
       seed: 0,
+      exercicePrincipal: programme.principal ?? undefined,
+      exercicesPrioritaires: programme.soutiens,
     };
     if (noeud) return optionsPourNoeud(noeud, base);
     return {
@@ -67,7 +79,7 @@ export default function Tirage({ navigation, route }: Props) {
       intensite: reglages.intensite,
       focus: reglages.focus,
     };
-  }, [noeud, reglages, niveau, historiqueIds]);
+  }, [noeud, reglages, niveau, historiqueIds, voieActive, paliersValides]);
 
   const tirer = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

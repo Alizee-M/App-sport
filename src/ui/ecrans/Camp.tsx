@@ -32,6 +32,13 @@ import {
   recompenseParId,
   caloriesSeance,
 } from '../../moteur/calories';
+import {
+  voieParId,
+  palierCourant,
+  partPratique,
+  progressionVoie,
+} from '../../moteur/competences';
+import { exerciceParId } from '../../moteur/exercices';
 import { genererSeance } from '../../moteur/seance';
 import { EMOJI_STAT, LIBELLE_STAT, STATS } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
@@ -56,6 +63,9 @@ export default function Camp() {
   const pointsAlloues = useJeu((e) => e.pointsAlloues);
   const allouerPoint = useJeu((e) => e.allouerPoint);
   const quete = useJeu((e) => e.queteRecompense);
+  const voieActive = useJeu((e) => e.voieActive);
+  const paliersValides = useJeu((e) => e.paliersValides);
+  const volumes = useJeu((e) => e.volumes);
   const joursQueteFaite = useJeu((e) => e.joursQueteFaite);
   const validerQuete = useJeu((e) => e.validerQueteJournaliere);
 
@@ -98,6 +108,11 @@ export default function Camp() {
   }, [reglages, niveau.niveau]);
 
   const recompense = quete ? recompenseParId(quete.recompenseId) : undefined;
+
+  const voie = voieActive ? voieParId(voieActive) : undefined;
+  const palierEnCours = voie ? palierCourant(voie, paliersValides) : null;
+  const exercicePalier = palierEnCours ? exerciceParId(palierEnCours.exerciceId) : undefined;
+  const pratique = palierEnCours ? partPratique(palierEnCours, volumes) : 0;
 
   const confirmerQuete = () =>
     Alert.alert(
@@ -238,6 +253,56 @@ export default function Camp() {
               titre="Choisir une récompense"
               variante="secondaire"
               onPress={() => navigation.navigate('Recompenses')}
+              style={{ marginTop: espace.m }}
+            />
+          </>
+        )}
+      </FenetreSysteme>
+
+      {/* ------------------------- Voie de compétence ----------------------- */}
+      <View style={{ height: espace.m }} />
+      <FenetreSysteme titre="Voie de compétence" couleur={couleurs.accent}>
+        {voie && palierEnCours ? (
+          <>
+            <View style={styles.ligneRecompense}>
+              <Text style={styles.emojiRecompense}>{voie.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nomRecompense}>{exercicePalier?.nom ?? voie.nom}</Text>
+                <Text style={styles.detailRecompense}>{voie.nom}</Text>
+              </View>
+              <Text style={styles.pourcentRecompense}>
+                {Math.round(progressionVoie(voie, paliersValides) * 100)} %
+              </Text>
+            </View>
+
+            <View style={{ marginTop: espace.m }}>
+              <Jauge progression={pratique} couleur={pratique >= 1 ? couleurs.succes : couleurs.accent} />
+            </View>
+
+            <Text style={styles.resteRecompense}>
+              {pratique >= 1
+                ? 'Pratique suffisante : le test du palier est ouvert.'
+                : `Pratique du palier : ${Math.round(pratique * 100)} %. Tes séances travaillent ce geste.`}
+            </Text>
+
+            <Bouton
+              titre={pratique >= 1 ? 'Passer le test' : 'Voir la voie'}
+              variante={pratique >= 1 ? 'principal' : 'fantome'}
+              onPress={() => navigation.navigate('Competences')}
+              style={{ marginTop: espace.m }}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.sansQuete}>
+              {voie
+                ? 'Voie achevée. Choisis-en une nouvelle : le tirage programmera les exercices qui y mènent.'
+                : 'Vise un geste précis — tenir sur les mains, une pompe sur un bras. Le tirage placera alors dans tes séances les exercices qui y mènent, dans l\'ordre.'}
+            </Text>
+            <Bouton
+              titre="Choisir une voie"
+              variante="secondaire"
+              onPress={() => navigation.navigate('Competences')}
               style={{ marginTop: espace.m }}
             />
           </>

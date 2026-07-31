@@ -34,6 +34,14 @@ import {
 import { estRecord, resultatCredible, xpPourDefi, type Defi } from '../moteur/defis';
 import { caloriesSeance, progressionQuete, type QueteRecompense } from '../moteur/calories';
 import {
+  volumeRealise,
+  cumulerVolumes,
+  voieParId,
+  palierCourant,
+  partPratique,
+  type Volumes,
+} from '../moteur/competences';
+import {
   POINTS_PAR_NIVEAU,
   bonusPoints,
   pointsVides,
@@ -148,6 +156,12 @@ interface EtatJeu {
   dernierJourVu: string | null;
   /** L'éveil a-t-il été joué ? Faux au tout premier lancement. */
   eveille: boolean;
+  /** Voie de compétence suivie, qui pilote le tirage. */
+  voieActive: string | null;
+  /** Paliers déjà franchis, toutes voies confondues. */
+  paliersValides: string[];
+  /** Volume cumulé par exercice : c'est lui qui ouvre les tests. */
+  volumes: Volumes;
 
   /** Séance tirée et en attente de validation : non persistée. */
   seancePreparee: Seance | null;
@@ -171,6 +185,8 @@ interface EtatJeu {
   /** À appeler à l'ouverture : applique les manquements de la veille. */
   verifierPenalites: () => Penalite | null;
   marquerEveille: () => void;
+  choisirVoie: (voieId: string | null) => void;
+  validerPalier: (palierId: string) => void;
 }
 
 const REGLAGES_PAR_DEFAUT: Reglages = {
@@ -206,6 +222,9 @@ export const useJeu = create<EtatJeu>()(
       joursQueteFaite: [],
       dernierJourVu: null,
       eveille: false,
+      voieActive: null,
+      paliersValides: [],
+      volumes: {},
       seancePreparee: null,
       noeudVise: null,
       hydrate: false,
@@ -345,6 +364,9 @@ export const useJeu = create<EtatJeu>()(
           noeudsTermines,
           journal: [entree, ...etat.journal].slice(0, TAILLE_JOURNAL),
           seancesTerminees: etat.seancesTerminees + 1,
+          // Le volume réellement effectué : c'est lui qui ouvre les tests
+          // des voies de compétence.
+          volumes: cumulerVolumes(etat.volumes, volumeRealise(seance, ratio)),
           queteRecompense,
           pointsDisponibles: etat.pointsDisponibles + pointsGagnes,
           seancePreparee: null,
@@ -514,6 +536,28 @@ export const useJeu = create<EtatJeu>()(
 
       marquerEveille: () => set({ eveille: true }),
 
+      choisirVoie: (voieId) => set({ voieActive: voieId }),
+
+      /**
+       * Franchit un palier. Le test se valide sur parole — aucun téléphone
+       * ne peut vérifier un équilibre — mais seulement après avoir accumulé
+       * la pratique exigée, vérifiée ici et pas seulement dans l'écran.
+       */
+      validerPalier: (palierId) =>
+        set((etat) => {
+          if (etat.paliersValides.includes(palierId)) return etat;
+
+          const voie = etat.voieActive ? voieParId(etat.voieActive) : undefined;
+          const palier = voie?.paliers.find((p) => p.id === palierId);
+          if (!palier || palierCourant(voie!, etat.paliersValides)?.id !== palierId) return etat;
+          if (partPratique(palier, etat.volumes) < 1) return etat;
+
+          return {
+            paliersValides: [...etat.paliersValides, palierId],
+            xpTotal: etat.xpTotal + 150,
+          };
+        }),
+
       toutEffacer: () =>
         set({
           xpTotal: 0,
@@ -531,6 +575,9 @@ export const useJeu = create<EtatJeu>()(
           joursQueteFaite: [],
           dernierJourVu: null,
           eveille: false,
+          voieActive: null,
+          paliersValides: [],
+          volumes: {},
           seancePreparee: null,
           noeudVise: null,
           reglages: REGLAGES_PAR_DEFAUT,
@@ -559,6 +606,9 @@ export const useJeu = create<EtatJeu>()(
         joursQueteFaite: etat.joursQueteFaite,
         dernierJourVu: etat.dernierJourVu,
         eveille: etat.eveille,
+        voieActive: etat.voieActive,
+        paliersValides: etat.paliersValides,
+        volumes: etat.volumes,
       }),
       // On lève le drapeau même si la relecture a échoué : mieux vaut
       // repartir d'une progression vide que rester bloqué sur l'écran de

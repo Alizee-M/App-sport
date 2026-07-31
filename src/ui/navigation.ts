@@ -10,6 +10,7 @@ export type ParamsPile = {
   // relancer l'épreuve immédiatement après avoir vu son score.
   Defi: { defiId: string };
   Recompenses: undefined;
+  Competences: undefined;
 };
 
 export type ParamsOnglets = {

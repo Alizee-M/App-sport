@@ -207,4 +207,12 @@ export interface OptionsTirage {
   nbModificateurs?: number;
   /** Cartes imposées plutôt que tirées. Sert aux tests et aux quêtes scénarisées. */
   modificateursImposes?: string[];
+  /**
+   * Exercice du palier de compétence en cours, à programmer presque à
+   * chaque séance. Sans lui, une voie ne serait qu'un tableau de bord et
+   * le hasard continuerait de proposer autre chose.
+   */
+  exercicePrincipal?: string;
+  /** Exercices de soutien de la voie : favorisés, sans plus. */
+  exercicesPrioritaires?: string[];
 }

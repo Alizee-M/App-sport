@@ -96,6 +96,25 @@ tirage ne peut littéralement plus produire les séances du niveau 2. Quatre
 jauges (Force, Cardio, Souplesse, Gainage) montent selon ce que tu fais
 réellement.
 
+### 🤸 Les voies de compétence
+Le tirage au sort empêche l'ennui, mais il ne mène nulle part en
+particulier. Une **voie** donne une direction : un geste difficile nommé —
+tenir en équilibre sur les mains, une pompe sur un bras, un pistol squat,
+un L-sit — découpé en paliers qui se franchissent dans l'ordre.
+
+Ce n'est pas un tableau de bord. Tant qu'une voie est active, **le tirage
+programme réellement l'exercice du palier en cours** : il sort dans plus de
+neuf séances sur dix, et il échappe au filtre de difficulté (on travaille
+le geste que la voie impose, même s'il est plus facile que le niveau
+atteint). Les exercices de soutien de la voie sont favorisés sans être
+imposés.
+
+Un palier ne se valide pas d'un clic. L'app **compte le volume réellement
+effectué**, séance après séance ; le test ne s'ouvre qu'une fois la
+pratique accumulée (par exemple 300 pompes pike avant d'essayer le poirier
+tête au mur). Le test lui-même se valide sur parole — aucun téléphone ne
+peut vérifier un équilibre — mais on ne peut pas sauter les marches.
+
 ### 🗺️ L'aventure
 Vingt-quatre étapes réparties en cinq zones, chacune close par un boss
 (le Coussin Ancestral, le Réveil de 6h30, le Doute de Novembre…). Ça donne
@@ -145,7 +164,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 116 tests échouent : ce qui est publié a donc
+vérification des types ou les 130 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -167,7 +186,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 116 tests sur le moteur de jeu
+npm test          # 130 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -202,6 +221,7 @@ src/moteur/          logique pure, testée (aucune dépendance UI)
   exercices.ts         catalogue de 84 exercices
   calories.ts          MET, dépense réelle, catalogue de récompenses
   systeme.ts           rangs E→S, points d'attribut, quête journalière
+  competences.ts       voies, paliers, volume pratiqué, pilotage du tirage
   modificateurs.ts     les 20 cartes « règles du jour »
   seance.ts            le tirage : contraintes, pondérations, dosage
   deroulement.ts       la séance dépliée étape par étape
@@ -214,7 +234,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               116 tests node:test
+tests/               130 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -237,4 +257,7 @@ Les garde-fous du tirage passent avant tout le reste :
 - l'échauffement prépare toujours au moins une zone qui va travailler ;
 - le repos qui suit un exercice difficile n'est jamais plus court que
   celui d'un exercice facile du même bloc, et ajuster les repos ne fait
-  pas dériver la durée de la séance.
+  pas dériver la durée de la séance ;
+- les paliers d'une voie vont bien du plus facile au plus difficile, une
+  voie active fait sortir son exercice dans au moins 85 % des tirages, et
+  cette priorité ne casse aucune contrainte de niveau, matériel ou bruit.

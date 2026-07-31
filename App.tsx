@@ -19,6 +19,7 @@ import Seance from './src/ui/ecrans/Seance';
 import Bilan from './src/ui/ecrans/Bilan';
 import Defi from './src/ui/ecrans/Defi';
 import Recompenses from './src/ui/ecrans/Recompenses';
+import Competences from './src/ui/ecrans/Competences';
 import { Eveil } from './src/ui/composants/Eveil';
 import { NotificationSysteme } from './src/ui/composants/systeme';
 
@@ -144,6 +145,7 @@ export default function App() {
           />
           <Pile.Screen name="Defi" component={Defi} />
           <Pile.Screen name="Recompenses" component={Recompenses} />
+          <Pile.Screen name="Competences" component={Competences} />
         </Pile.Navigator>
       </NavigationContainer>
 
