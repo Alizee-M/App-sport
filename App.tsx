@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -18,6 +18,9 @@ import Tirage from './src/ui/ecrans/Tirage';
 import Seance from './src/ui/ecrans/Seance';
 import Bilan from './src/ui/ecrans/Bilan';
 import Defi from './src/ui/ecrans/Defi';
+import Recompenses from './src/ui/ecrans/Recompenses';
+import { Eveil } from './src/ui/composants/Eveil';
+import { NotificationSysteme } from './src/ui/composants/systeme';
 
 const Pile = createNativeStackNavigator<ParamsPile>();
 const Onglets = createBottomTabNavigator<ParamsOnglets>();
@@ -35,15 +38,15 @@ const theme: Theme = {
 };
 
 const ICONES: Record<keyof ParamsOnglets, string> = {
-  Camp: '🏕️',
+  Camp: '👤',
   Aventure: '🗺️',
   Defis: '⚡',
   Journal: '📖',
 };
 
 const LIBELLES: Record<keyof ParamsOnglets, string> = {
-  Camp: 'Camp',
-  Aventure: 'Carte',
+  Camp: 'Statut',
+  Aventure: 'Donjons',
   Defis: 'Défis',
   Journal: 'Journal',
 };
@@ -81,6 +84,19 @@ export default function App() {
   // On attend la relecture du stockage : sans ça, l'app afficherait une
   // fraction de seconde un héros de niveau 1 avant de retrouver le vrai.
   const hydrate = useJeu((e) => e.hydrate);
+  const eveille = useJeu((e) => e.eveille);
+  const marquerEveille = useJeu((e) => e.marquerEveille);
+  const verifierPenalites = useJeu((e) => e.verifierPenalites);
+  const [penalite, setPenalite] = useState<{ joursManques: number; xpPerdue: number } | null>(null);
+
+  /* Les quêtes journalières manquées se soldent à l'ouverture, une seule
+   * fois par jour. La sanction est plafonnée côté moteur : revenir après
+   * un mois ne doit pas coûter un mois. */
+  useEffect(() => {
+    if (!hydrate || !eveille) return;
+    const sanction = verifierPenalites();
+    if (sanction && sanction.xpPerdue > 0) setPenalite(sanction);
+  }, [hydrate, eveille, verifierPenalites]);
 
   if (!hydrate) {
     return (
@@ -90,6 +106,15 @@ export default function App() {
           <Text style={styles.nom}>HÉROS DE SALON</Text>
           <ActivityIndicator color={couleurs.accent} style={{ marginTop: 24 }} />
         </View>
+        <StatusBar style="light" />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!eveille) {
+    return (
+      <SafeAreaProvider>
+        <Eveil onTermine={marquerEveille} />
         <StatusBar style="light" />
       </SafeAreaProvider>
     );
@@ -118,8 +143,26 @@ export default function App() {
             options={{ gestureEnabled: false, animation: 'fade' }}
           />
           <Pile.Screen name="Defi" component={Defi} />
+          <Pile.Screen name="Recompenses" component={Recompenses} />
         </Pile.Navigator>
       </NavigationContainer>
+
+      <NotificationSysteme
+        visible={penalite !== null}
+        titre="Quête journalière manquée"
+        lignes={
+          penalite
+            ? [
+                `${penalite.joursManques} jour${penalite.joursManques > 1 ? 's' : ''} sans honorer la quête.`,
+                `Pénalité : ${penalite.xpPerdue} XP et enchaînement brisé.`,
+                'Ton rang, lui, reste acquis. On reprend aujourd\'hui.',
+              ]
+            : []
+        }
+        couleur={couleurs.danger}
+        libelleBouton="Je reprends"
+        onFermer={() => setPenalite(null)}
+      />
       <StatusBar style="light" />
     </SafeAreaProvider>
   );

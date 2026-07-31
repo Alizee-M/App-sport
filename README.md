@@ -13,6 +13,52 @@ restent sur le téléphone.
 
 ---
 
+## Le Système
+
+L'app se présente comme un « Système » qui t'a sélectionné : rangs **E → S**
+au lieu de niveaux nus, fenêtres bleutées, notifications qui s'imposent aux
+moments qui comptent. Hommage au genre, pas copie — aucun nom, personnage
+ni visuel d'une œuvre existante n'est repris.
+
+- **Quête journalière** tirée par jour calendaire, identique toute la
+  journée. L'honorer renforce l'enchaînement ; l'ignorer coûte de l'XP et
+  brise la série. La sanction est plafonnée à trois jours et ne fait
+  **jamais perdre un rang** : une app qui punit durement fabrique de
+  l'évitement, on n'ouvre plus l'app pour ne pas voir la sanction.
+- **Points d'attribut** à répartir soi-même à chaque montée de niveau.
+  Investir dans une stat rend les séances de cette spécialité plus
+  rémunératrices, jusqu'à +30 %.
+- **Quêtes de récompense** : tu choisis ce que tu veux débloquer — une
+  part de pizza, un burger, une raclette — et le Système calcule l'effort
+  réel que ça demande.
+
+### Les calories sont calculées, pas inventées
+
+Méthode MET (*Compendium of Physical Activities*), avec un MET attribué à
+chaque exercice selon sa famille et sa difficulté, repos compris :
+
+```
+kcal = MET × 3,5 × poids(kg) / 200 × minutes
+```
+
+Deux règles que le code applique strictement :
+
+**Sans poids renseigné, aucune calorie n'est affichée.** On ne devine pas,
+on demande — et tant qu'on n'a pas la réponse, on n'invente rien.
+
+**Le vrai chiffre, même quand il déplaît.** Une séance de 20 minutes
+intense brûle environ 105 kcal pour 70 kg. Un burger en vaut 503. Donc
+**un burger, c'est cinq séances**, et l'app l'annonce ainsi : la quête
+s'accumule sur plusieurs séances au lieu de prétendre qu'une seule suffit.
+Annoncer l'inverse serait mentir d'un facteur cinq.
+
+L'estimation reste juste à ±20-30 % près — c'est la limite de la méthode,
+et l'app le dit. Enfin, une récompense se **débloque**, elle ne se
+*rembourse* pas : l'app ne dit jamais quoi manger et ne parle jamais de
+poids à perdre.
+
+---
+
 ## Ce qui empêche de s'ennuyer
 
 Quatre mécaniques se combinent, chacune attaquant la lassitude par un
@@ -99,7 +145,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 93 tests échouent : ce qui est publié a donc
+vérification des types ou les 116 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -121,7 +167,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 93 tests sur le moteur de jeu
+npm test          # 116 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -154,6 +200,8 @@ src/moteur/          logique pure, testée (aucune dépendance UI)
   types.ts             vocabulaire du jeu
   alea.ts              hasard reproductible (même graine → même séance)
   exercices.ts         catalogue de 84 exercices
+  calories.ts          MET, dépense réelle, catalogue de récompenses
+  systeme.ts           rangs E→S, points d'attribut, quête journalière
   modificateurs.ts     les 20 cartes « règles du jour »
   seance.ts            le tirage : contraintes, pondérations, dosage
   deroulement.ts       la séance dépliée étape par étape
@@ -166,7 +214,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               93 tests node:test
+tests/               116 tests node:test
 ```
 
 ### Ce que les tests vérifient

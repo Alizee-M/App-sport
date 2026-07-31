@@ -1,5 +1,10 @@
 /* ----------------------------------------------------------------------
- * Identité visuelle : sombre, chaude, un peu jeu de rôle.
+ * Identité visuelle : l'interface d'un « Système ».
+ *
+ * Fenêtres bleutées à bordures nettes sur fond très sombre, comme une
+ * projection devant les yeux. Le cyan porte le Système lui-même, l'orange
+ * reste réservé à l'effort en cours — ainsi, pendant une séance, la seule
+ * couleur chaude à l'écran est celle du chrono qui tourne.
  *
  * L'app s'utilise souvent tôt le matin ou tard le soir, téléphone posé au
  * sol à un mètre des yeux : d'où le fond sombre et des tailles de texte
@@ -7,28 +12,30 @@
  * -------------------------------------------------------------------- */
 
 export const couleurs = {
-  fond: '#0c0e16',
-  surface: '#161a27',
-  surfaceHaute: '#1f2434',
-  bordure: '#2c3346',
+  fond: '#05070f',
+  surface: '#0c1322',
+  surfaceHaute: '#122036',
+  bordure: '#1d3a5c',
 
-  texte: '#eef1f8',
-  texteDoux: '#98a1bb',
-  texteFaible: '#6b7490',
+  texte: '#eaf4ff',
+  texteDoux: '#8fa6c4',
+  texteFaible: '#5d7799',
 
-  accent: '#ff6b35',
-  accentSombre: '#c4471b',
-  violet: '#7c5cff',
+  /** Le bleu du Système : fenêtres, notifications, bordures. */
+  accent: '#4cc9f0',
+  accentSombre: '#1b7fa8',
+  violet: '#8b5cf6',
   violetSombre: '#5b3fd9',
 
   succes: '#3ddc97',
   or: '#ffc857',
   danger: '#f2545b',
 
+  /** L'orange n'apparaît plus que pendant l'effort. */
   effort: '#ff6b35',
   repos: '#4cc9f0',
   echauffement: '#ffc857',
-  retourCalme: '#7c5cff',
+  retourCalme: '#8b5cf6',
 } as const;
 
 export const espace = {

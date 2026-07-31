@@ -1,25 +1,46 @@
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { couleurs, espace, rayon, texte } from '../theme';
-import { Bouton, Jauge, Panneau, Puce, TitreSection } from '../composants/base';
+import { Bouton, Jauge, Puce } from '../composants/base';
 import { BarresStats, BulleCoach } from '../composants/elements';
+import {
+  BoutonPoint,
+  Ecusson,
+  FenetreSysteme,
+  LigneSysteme,
+  NotificationSysteme,
+} from '../composants/systeme';
 import { useJeu, joursDepuisDerniereSeance } from '../../etat/magasin';
-import { niveauDepuisXp, titrePourNiveau, prochainTitre, serieAffichee, jourLocal } from '../../moteur/progression';
+import { niveauDepuisXp, serieAffichee, jourLocal } from '../../moteur/progression';
 import { accueilCoach } from '../../moteur/coach';
 import { creerAlea } from '../../moteur/alea';
 import { avancement } from '../../moteur/aventure';
-import { exercicesDisponibles } from '../../moteur/exercices';
+import {
+  palierPourNiveau,
+  prochainPalier,
+  queteJournaliere,
+  totalPoints,
+} from '../../moteur/systeme';
+import {
+  progressionQuete,
+  kcalRestantes,
+  seancesRestantes,
+  recompenseParId,
+  caloriesSeance,
+} from '../../moteur/calories';
+import { genererSeance } from '../../moteur/seance';
+import { EMOJI_STAT, LIBELLE_STAT, STATS } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
 
 /**
- * Le camp de base : ce que l'on voit en ouvrant l'app.
+ * L'écran de statut : la fiche du chasseur.
  *
- * Un seul geste doit suffire à lancer une séance. Tout le reste (stats,
- * quête, titres) est là pour donner envie, pas pour être configuré.
+ * Un seul geste doit suffire à lancer une séance. Tout le reste — rang,
+ * points, quêtes — est là pour donner envie, pas pour être configuré.
  */
 export default function Camp() {
   const insets = useSafeAreaInsets();
@@ -31,57 +52,98 @@ export default function Camp() {
   const noeudsTermines = useJeu((e) => e.noeudsTermines);
   const seancesTerminees = useJeu((e) => e.seancesTerminees);
   const reglages = useJeu((e) => e.reglages);
+  const pointsDisponibles = useJeu((e) => e.pointsDisponibles);
+  const pointsAlloues = useJeu((e) => e.pointsAlloues);
+  const allouerPoint = useJeu((e) => e.allouerPoint);
+  const quete = useJeu((e) => e.queteRecompense);
+  const joursQueteFaite = useJeu((e) => e.joursQueteFaite);
+  const validerQuete = useJeu((e) => e.validerQueteJournaliere);
 
   const niveau = niveauDepuisXp(xpTotal);
+  const palier = palierPourNiveau(niveau.niveau);
+  const suivant = prochainPalier(niveau.niveau);
   const serie = serieAffichee(enchainement, jourLocal(new Date()));
-  const quete = avancement(noeudsTermines);
+  const aventure = avancement(noeudsTermines);
+  const aujourdhui = jourLocal(new Date());
 
-  // Une réplique par ouverture d'écran, pas une par re-rendu.
+  const [notification, setNotification] = useState<string | null>(null);
+
   const propos = useMemo(
     () => accueilCoach(creerAlea(Date.now() % 100000), serie, joursDepuisDerniereSeance(enchainement)),
     [serie, enchainement.dernierJour],
   );
 
-  const tailleDeck = useMemo(
-    () =>
-      exercicesDisponibles({
-        phase: 'bloc',
-        niveau: niveau.niveau,
-        materielDispo: reglages.materielDispo,
-        silencieux: reglages.silencieux,
-      }).length,
-    [niveau.niveau, reglages.materielDispo, reglages.silencieux],
+  const journaliere = useMemo(
+    () => queteJournaliere(aujourdhui, niveau.niveau, reglages.materielDispo, reglages.silencieux),
+    [aujourdhui, niveau.niveau, reglages.materielDispo, reglages.silencieux],
   );
+  const journaliereFaite = joursQueteFaite.includes(aujourdhui);
 
-  const titreSuivant = prochainTitre(niveau.niveau);
+  /* Dépense d'une séance type, pour traduire une quête en nombre de
+   * séances plutôt qu'en calories abstraites. */
+  const kcalParSeance = useMemo(() => {
+    if (!reglages.poidsKg) return 0;
+    const type = genererSeance({
+      dureeMin: reglages.dureeMin,
+      intensite: reglages.intensite,
+      focus: reglages.focus,
+      materielDispo: reglages.materielDispo,
+      silencieux: reglages.silencieux,
+      niveau: niveau.niveau,
+      historiqueIds: [],
+      seed: 1,
+      nbModificateurs: 0,
+    });
+    return caloriesSeance(type, reglages.poidsKg);
+  }, [reglages, niveau.niveau]);
+
+  const recompense = quete ? recompenseParId(quete.recompenseId) : undefined;
+
+  const confirmerQuete = () =>
+    Alert.alert(
+      'Quête journalière accomplie ?',
+      'Le Système te croit sur parole. Valide seulement si tu l\'as réellement faite.',
+      [
+        { text: 'Pas encore', style: 'cancel' },
+        {
+          text: 'C\'est fait',
+          onPress: () => {
+            validerQuete();
+            setNotification(`Quête journalière validée. +${journaliere.xpRecompense} XP.`);
+          },
+        },
+      ],
+    );
 
   return (
     <ScrollView
       style={styles.ecran}
-      contentContainerStyle={{ padding: espace.l, paddingTop: insets.top + espace.m, paddingBottom: espace.xxl }}
+      contentContainerStyle={{
+        padding: espace.l,
+        paddingTop: insets.top + espace.m,
+        paddingBottom: espace.xxl,
+      }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ---------------------------- Héros ---------------------------- */}
+      {/* ---------------------------- Le chasseur --------------------------- */}
       <View style={styles.entete}>
+        <Ecusson rang={palier.rang} couleur={palier.couleur} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.surtitre}>HÉROS DE SALON</Text>
-          <Text style={styles.titreHeros}>{titrePourNiveau(niveau.niveau)}</Text>
-        </View>
-        <View style={styles.pastilleNiveau}>
-          <Text style={styles.pastilleNiveauChiffre}>{niveau.niveau}</Text>
-          <Text style={styles.pastilleNiveauLibelle}>NIV.</Text>
+          <Text style={styles.surtitre}>STATUT</Text>
+          <Text style={[styles.titreHeros, { color: palier.couleur }]}>{palier.titre}</Text>
+          <Text style={styles.niveauTexte}>Niveau {niveau.niveau}</Text>
         </View>
       </View>
 
       <View style={{ marginTop: espace.l }}>
-        <Jauge progression={niveau.progression} couleur={couleurs.or} />
+        <Jauge progression={niveau.progression} couleur={couleurs.accent} />
         <View style={styles.ligneXp}>
           <Text style={styles.texteXp}>
             {niveau.xpDansNiveau} / {niveau.xpRequisNiveau} XP
           </Text>
-          {titreSuivant ? (
+          {suivant ? (
             <Text style={styles.texteXpDroite}>
-              niveau {titreSuivant.niveau} : {titreSuivant.titre}
+              rang {suivant.rang} au niveau {suivant.niveauMin}
             </Text>
           ) : null}
         </View>
@@ -90,61 +152,173 @@ export default function Camp() {
       <View style={{ height: espace.l }} />
       <BulleCoach texte={propos} />
 
-      {/* ------------------------- Action centrale --------------------- */}
       <View style={{ height: espace.xl }} />
-      <Bouton
-        titre="Tirer une séance"
-        icone="🎲"
-        onPress={() => navigation.navigate('Tirage')}
-      />
-      <Text style={styles.sousBouton}>
-        {tailleDeck} exercices peuvent sortir · jamais deux fois la même séance
-      </Text>
+      <Bouton titre="Tirer une séance" icone="🎲" onPress={() => navigation.navigate('Tirage')} />
 
-      {/* ---------------------------- Quête ---------------------------- */}
-      {quete.noeudCourant && quete.zoneCourante ? (
-        <>
-          <TitreSection>Quête en cours</TitreSection>
-          <Panneau couleurBordure={quete.zoneCourante.couleur}>
-            <View style={styles.ligneQuete}>
-              <Text style={styles.emojiQuete}>{quete.noeudCourant.emoji}</Text>
+      {/* ------------------------- Quête journalière ------------------------ */}
+      <View style={{ height: espace.xl }} />
+      <FenetreSysteme
+        titre="Quête journalière"
+        couleur={journaliereFaite ? couleurs.succes : couleurs.accent}
+      >
+        {journaliereFaite ? (
+          <Text style={styles.queteFaite}>
+            ✅ Accomplie aujourd'hui. Le Système est satisfait.
+          </Text>
+        ) : (
+          <>
+            {journaliere.lignes.map((ligne) => (
+              <LigneSysteme
+                key={ligne.exerciceId}
+                libelle={`${ligne.emoji}  ${ligne.nom}`}
+                valeur={
+                  ligne.unite === 'reps' ? `${ligne.objectif}` : `${ligne.objectif} s`
+                }
+                couleurValeur={couleurs.accent}
+              />
+            ))}
+            <Text style={styles.avertissementQuete}>
+              À faire dans la journée, en une ou plusieurs fois. Ne pas l'honorer brise
+              l'enchaînement et coûte un peu d'expérience.
+            </Text>
+            <Bouton
+              titre={`Valider · +${journaliere.xpRecompense} XP`}
+              variante="secondaire"
+              onPress={confirmerQuete}
+              style={{ marginTop: espace.m }}
+            />
+          </>
+        )}
+      </FenetreSysteme>
+
+      {/* -------------------------- Quête récompense ------------------------ */}
+      <View style={{ height: espace.m }} />
+      <FenetreSysteme titre="Quête de récompense" couleur={couleurs.or}>
+        {quete && recompense ? (
+          <>
+            <View style={styles.ligneRecompense}>
+              <Text style={styles.emojiRecompense}>{recompense.emoji}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.zoneQuete}>
-                  {quete.zoneCourante.emoji} {quete.zoneCourante.nom}
+                <Text style={styles.nomRecompense}>{recompense.nom}</Text>
+                <Text style={styles.detailRecompense}>
+                  {recompense.kcal} kcal à dépenser
                 </Text>
-                <Text style={styles.nomQuete}>{quete.noeudCourant.nom}</Text>
               </View>
-              {quete.noeudCourant.type === 'boss' ? (
+              <Text style={styles.pourcentRecompense}>
+                {Math.round(progressionQuete(quete) * 100)} %
+              </Text>
+            </View>
+
+            <View style={{ marginTop: espace.m }}>
+              <Jauge progression={progressionQuete(quete)} couleur={couleurs.or} />
+            </View>
+
+            <Text style={styles.resteRecompense}>
+              {progressionQuete(quete) >= 1
+                ? 'Objectif atteint. Va la réclamer.'
+                : kcalParSeance > 0
+                  ? `Encore ${kcalRestantes(quete)} kcal, soit environ ${seancesRestantes(quete, kcalParSeance)} séance(s).`
+                  : `Encore ${kcalRestantes(quete)} kcal.`}
+            </Text>
+
+            <Bouton
+              titre={progressionQuete(quete) >= 1 ? 'Réclamer la récompense' : 'Voir les récompenses'}
+              variante={progressionQuete(quete) >= 1 ? 'principal' : 'fantome'}
+              onPress={() => navigation.navigate('Recompenses')}
+              style={{ marginTop: espace.m }}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.sansQuete}>
+              Choisis ce que tu veux débloquer. Le Système calculera l'effort exact que ça
+              demande — et il ne trichera pas sur le chiffre.
+            </Text>
+            <Bouton
+              titre="Choisir une récompense"
+              variante="secondaire"
+              onPress={() => navigation.navigate('Recompenses')}
+              style={{ marginTop: espace.m }}
+            />
+          </>
+        )}
+      </FenetreSysteme>
+
+      {/* ------------------------------ Statut ------------------------------ */}
+      <View style={{ height: espace.m }} />
+      <FenetreSysteme
+        titre={pointsDisponibles > 0 ? `Points à répartir · ${pointsDisponibles}` : 'Attributs'}
+        couleur={pointsDisponibles > 0 ? couleurs.or : couleurs.bordure}
+        discrete={pointsDisponibles === 0}
+      >
+        {pointsDisponibles > 0 ? (
+          <Text style={styles.explicationPoints}>
+            Chaque point investi rend les séances de cette spécialité plus rémunératrices,
+            jusqu'à +30 %.
+          </Text>
+        ) : null}
+
+        {STATS.map((stat) => (
+          <LigneSysteme
+            key={stat}
+            libelle={`${EMOJI_STAT[stat]}  ${LIBELLE_STAT[stat]}`}
+            valeur={
+              pointsAlloues[stat] > 0
+                ? `${Math.round(stats[stat])} (+${pointsAlloues[stat]})`
+                : `${Math.round(stats[stat])}`
+            }
+            couleurValeur={pointsAlloues[stat] > 0 ? couleurs.or : couleurs.texte}
+            action={
+              <BoutonPoint actif={pointsDisponibles > 0} onPress={() => allouerPoint(stat)} />
+            }
+          />
+        ))}
+
+        <View style={{ height: espace.m }} />
+        <BarresStats stats={stats} />
+      </FenetreSysteme>
+
+      {/* ------------------------------ Aventure ---------------------------- */}
+      {aventure.noeudCourant && aventure.zoneCourante ? (
+        <>
+          <View style={{ height: espace.m }} />
+          <FenetreSysteme titre="Donjon en cours" couleur={aventure.zoneCourante.couleur}>
+            <View style={styles.ligneRecompense}>
+              <Text style={styles.emojiRecompense}>{aventure.noeudCourant.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nomRecompense}>{aventure.noeudCourant.nom}</Text>
+                <Text style={styles.detailRecompense}>{aventure.zoneCourante.nom}</Text>
+              </View>
+              {aventure.noeudCourant.type === 'boss' ? (
                 <Puce couleur={couleurs.or} fond="rgba(255,200,87,0.15)">
                   BOSS
                 </Puce>
               ) : null}
             </View>
-            <Text style={styles.recitQuete}>{quete.noeudCourant.recit}</Text>
             <Bouton
-              titre={quete.noeudCourant.type === 'boss' ? 'Affronter le boss' : 'Partir en quête'}
-              variante="secondaire"
-              onPress={() =>
-                navigation.navigate('Tirage', { noeudId: quete.noeudCourant!.id })
-              }
+              titre={aventure.noeudCourant.type === 'boss' ? 'Affronter le boss' : 'Y aller'}
+              variante="fantome"
+              onPress={() => navigation.navigate('Tirage', { noeudId: aventure.noeudCourant!.id })}
               style={{ marginTop: espace.m }}
             />
-          </Panneau>
+          </FenetreSysteme>
         </>
       ) : null}
 
-      {/* ---------------------------- Stats ---------------------------- */}
-      <TitreSection>Ton personnage</TitreSection>
-      <Panneau>
-        <BarresStats stats={stats} />
-      </Panneau>
-
-      {/* --------------------------- Compteurs ------------------------- */}
+      {/* ----------------------------- Compteurs ---------------------------- */}
       <View style={styles.compteurs}>
-        <Compteur emoji="🔥" valeur={String(serie)} libelle={serie > 1 ? 'jours d\'affilée' : 'jour d\'affilée'} />
-        <Compteur emoji="🏋️" valeur={String(seancesTerminees)} libelle="séances" />
-        <Compteur emoji="🗺️" valeur={`${quete.faits}/${quete.total}`} libelle="étapes" />
+        <Compteur emoji="🔥" valeur={String(serie)} libelle={serie > 1 ? 'jours de suite' : 'jour de suite'} />
+        <Compteur emoji="⚔️" valeur={String(seancesTerminees)} libelle="séances" />
+        <Compteur emoji="🗺️" valeur={`${aventure.faits}/${aventure.total}`} libelle="donjons" />
       </View>
+
+      <NotificationSysteme
+        visible={notification !== null}
+        titre="Quête accomplie"
+        lignes={notification ? [notification] : []}
+        couleur={couleurs.succes}
+        onFermer={() => setNotification(null)}
+      />
     </ScrollView>
   );
 }
@@ -162,49 +336,42 @@ function Compteur({ emoji, valeur, libelle }: { emoji: string; valeur: string; l
 const styles = StyleSheet.create({
   ecran: { flex: 1, backgroundColor: couleurs.fond },
   entete: { flexDirection: 'row', alignItems: 'center', gap: espace.l },
-  surtitre: { ...texte.section, color: couleurs.accent },
-  titreHeros: { ...texte.titre, color: couleurs.texte, marginTop: 4 },
-  pastilleNiveau: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: couleurs.surfaceHaute,
-    borderWidth: 2,
-    borderColor: couleurs.or,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pastilleNiveauChiffre: { fontSize: 24, fontWeight: '800', color: couleurs.or },
-  pastilleNiveauLibelle: { ...texte.minuscule, color: couleurs.texteFaible, fontSize: 9 },
+  surtitre: { ...texte.section, color: couleurs.texteFaible, fontSize: 10 },
+  titreHeros: { ...texte.sousTitre, marginTop: 2 },
+  niveauTexte: { ...texte.petit, color: couleurs.texteDoux, marginTop: 2 },
 
   ligneXp: { flexDirection: 'row', justifyContent: 'space-between', marginTop: espace.s, gap: espace.m },
   texteXp: { ...texte.minuscule, color: couleurs.texteDoux },
   texteXpDroite: { ...texte.minuscule, color: couleurs.texteFaible, flexShrink: 1, textAlign: 'right' },
 
-  sousBouton: {
+  queteFaite: { ...texte.corps, color: couleurs.succes, textAlign: 'center' },
+  avertissementQuete: {
     ...texte.minuscule,
     color: couleurs.texteFaible,
-    textAlign: 'center',
     marginTop: espace.m,
+    lineHeight: 16,
   },
 
-  ligneQuete: { flexDirection: 'row', alignItems: 'center', gap: espace.m },
-  emojiQuete: { fontSize: 30 },
-  zoneQuete: { ...texte.minuscule, color: couleurs.texteFaible },
-  nomQuete: { ...texte.sousTitre, color: couleurs.texte, marginTop: 2 },
-  recitQuete: {
-    ...texte.petit,
-    color: couleurs.texteDoux,
-    fontStyle: 'italic',
-    marginTop: espace.m,
-    lineHeight: 19,
+  ligneRecompense: { flexDirection: 'row', alignItems: 'center', gap: espace.m },
+  emojiRecompense: { fontSize: 30 },
+  nomRecompense: { ...texte.corps, color: couleurs.texte, fontWeight: '800' },
+  detailRecompense: { ...texte.minuscule, color: couleurs.texteFaible, marginTop: 2 },
+  pourcentRecompense: { ...texte.sousTitre, color: couleurs.or },
+  resteRecompense: { ...texte.petit, color: couleurs.texteDoux, marginTop: espace.m, lineHeight: 19 },
+  sansQuete: { ...texte.petit, color: couleurs.texteDoux, lineHeight: 20 },
+
+  explicationPoints: {
+    ...texte.minuscule,
+    color: couleurs.or,
+    marginBottom: espace.m,
+    lineHeight: 16,
   },
 
   compteurs: { flexDirection: 'row', gap: espace.m, marginTop: espace.l },
   compteur: {
     flex: 1,
     backgroundColor: couleurs.surface,
-    borderRadius: rayon.m,
+    borderRadius: rayon.s,
     borderWidth: 1,
     borderColor: couleurs.bordure,
     paddingVertical: espace.l,

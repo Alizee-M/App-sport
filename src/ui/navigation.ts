@@ -9,6 +9,7 @@ export type ParamsPile = {
   // Le bilan d'un défi reste dans l'écran du défi : on veut pouvoir
   // relancer l'épreuve immédiatement après avoir vu son score.
   Defi: { defiId: string };
+  Recompenses: undefined;
 };
 
 export type ParamsOnglets = {

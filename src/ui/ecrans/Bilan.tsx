@@ -170,6 +170,35 @@ export default function Bilan({ navigation, route }: Props) {
         ) : null}
 
         {/* ---------------------------- Détail ---------------------------- */}
+        {resultat.kcalDepensees > 0 || resultat.pointsGagnes > 0 ? (
+          <>
+            <TitreSection>Système</TitreSection>
+            <Panneau couleurBordure={couleurs.accent}>
+              {resultat.kcalDepensees > 0 ? (
+                <LigneInfo
+                  libelle="Dépense estimée"
+                  valeur={`≈ ${resultat.kcalDepensees} kcal`}
+                  couleurValeur={couleurs.accent}
+                />
+              ) : null}
+              {resultat.pointsGagnes > 0 ? (
+                <LigneInfo
+                  libelle="Points à répartir"
+                  valeur={`+${resultat.pointsGagnes}`}
+                  couleurValeur={couleurs.or}
+                />
+              ) : null}
+              {resultat.recompenseDebloquee ? (
+                <LigneInfo
+                  libelle="Quête de récompense"
+                  valeur="Objectif atteint"
+                  couleurValeur={couleurs.succes}
+                />
+              ) : null}
+            </Panneau>
+          </>
+        ) : null}
+
         <TitreSection>Le détail</TitreSection>
         <Panneau>
           {!complet ? (

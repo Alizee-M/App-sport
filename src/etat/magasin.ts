@@ -32,6 +32,19 @@ import {
   type Zone,
 } from '../moteur/aventure';
 import { estRecord, resultatCredible, xpPourDefi, type Defi } from '../moteur/defis';
+import { caloriesSeance, progressionQuete, type QueteRecompense } from '../moteur/calories';
+import {
+  POINTS_PAR_NIVEAU,
+  bonusPoints,
+  pointsVides,
+  calculerPenalite,
+  appliquerPenalite,
+  joursManquesEntre,
+  queteJournaliere,
+  type PointsStats,
+  type Penalite,
+} from '../moteur/systeme';
+import { xpCumuleePourAtteindre } from '../moteur/progression';
 import { STATS } from '../moteur/types';
 
 /* ----------------------------------------------------------------------
@@ -54,6 +67,12 @@ export interface Reglages {
   silencieux: boolean;
   /** Bips de décompte et de changement d'exercice pendant la séance. */
   sons: boolean;
+  /**
+   * Poids corporel, en kilogrammes. Nul tant qu'il n'est pas renseigné :
+   * sans lui, aucune estimation calorique n'a de sens, et on préfère ne
+   * rien afficher plutôt qu'un chiffre inventé.
+   */
+  poidsKg: number | null;
 }
 
 export interface EntreeJournal {
@@ -85,6 +104,12 @@ export interface ResultatSeance {
   /** Taille du vivier d'exercices avant et après la montée de niveau. */
   exercicesPossiblesAvant: number;
   exercicesPossiblesApres: number;
+  /** Dépense estimée, nulle tant que le poids n'est pas renseigné. */
+  kcalDepensees: number;
+  /** Points de stats gagnés en montant de niveau. */
+  pointsGagnes: number;
+  /** Vrai si cette séance vient d'achever la quête-récompense en cours. */
+  recompenseDebloquee: boolean;
 }
 
 export interface ResultatDefi {
@@ -108,6 +133,22 @@ interface EtatJeu {
   reglages: Reglages;
   seancesTerminees: number;
 
+  /* ----------------------------- Système ----------------------------- */
+  /** Points de stats en attente de répartition. */
+  pointsDisponibles: number;
+  /** Points déjà investis, par stat. */
+  pointsAlloues: PointsStats;
+  /** Quête-récompense en cours, s'il y en a une. */
+  queteRecompense: QueteRecompense | null;
+  /** Récompenses déjà débloquées, du plus récent au plus ancien. */
+  recompensesDebloquees: { recompenseId: string; date: string }[];
+  /** Jours où la quête journalière a été honorée. */
+  joursQueteFaite: string[];
+  /** Dernier jour où l'app a été ouverte, pour calculer les manquements. */
+  dernierJourVu: string | null;
+  /** L'éveil a-t-il été joué ? Faux au tout premier lancement. */
+  eveille: boolean;
+
   /** Séance tirée et en attente de validation : non persistée. */
   seancePreparee: Seance | null;
   /** Le nœud d'aventure visé par la séance préparée, s'il y en a un. */
@@ -120,6 +161,16 @@ interface EtatJeu {
   terminerSeance: (seance: Seance, ratio: number) => ResultatSeance;
   enregistrerDefi: (defi: Defi, score: number) => ResultatDefi;
   toutEffacer: () => void;
+
+  /* ----------------------------- Système ----------------------------- */
+  allouerPoint: (stat: keyof PointsStats) => void;
+  choisirRecompense: (recompenseId: string) => void;
+  abandonnerQuete: () => void;
+  reclamerRecompense: () => void;
+  validerQueteJournaliere: () => void;
+  /** À appeler à l'ouverture : applique les manquements de la veille. */
+  verifierPenalites: () => Penalite | null;
+  marquerEveille: () => void;
 }
 
 const REGLAGES_PAR_DEFAUT: Reglages = {
@@ -129,6 +180,7 @@ const REGLAGES_PAR_DEFAUT: Reglages = {
   materielDispo: ['chaise', 'mur'],
   silencieux: false,
   sons: true,
+  poidsKg: null,
 };
 
 function identifiant(): string {
@@ -147,6 +199,13 @@ export const useJeu = create<EtatJeu>()(
       journal: [],
       reglages: REGLAGES_PAR_DEFAUT,
       seancesTerminees: 0,
+      pointsDisponibles: 0,
+      pointsAlloues: pointsVides(),
+      queteRecompense: null,
+      recompensesDebloquees: [],
+      joursQueteFaite: [],
+      dernierJourVu: null,
+      eveille: false,
       seancePreparee: null,
       noeudVise: null,
       hydrate: false,
@@ -174,7 +233,11 @@ export const useJeu = create<EtatJeu>()(
         const enchainement = majEnchainement(etat.enchainement, aujourdhui);
         const serie = enchainement.serie;
 
-        const xpBase = Math.round(seance.xpPotentiel * ratio);
+        // Les points investis dans la stat travaillée paient : c'est ce
+        // qui donne un sens à la répartition, au-delà de l'affichage.
+        const xpBase = Math.round(
+          seance.xpPotentiel * ratio * (1 + bonusPoints(etat.pointsAlloues, seance.focus)),
+        );
         const partBonusSerie = Math.round(xpBase * bonusSerie(serie));
         const xpGagnee = xpBase + partBonusSerie;
 
@@ -239,6 +302,26 @@ export const useJeu = create<EtatJeu>()(
             silencieux: etat.reglages.silencieux,
           }).length;
 
+        // Dépense estimée, versée à la quête-récompense en cours. Elle
+        // reste nulle tant que le poids n'est pas renseigné : mieux vaut
+        // ne rien afficher qu'un chiffre inventé.
+        const kcalDepensees = etat.reglages.poidsKg
+          ? caloriesSeance(seance, etat.reglages.poidsKg, ratio)
+          : 0;
+
+        let queteRecompense = etat.queteRecompense;
+        let recompenseDebloquee = false;
+        if (queteRecompense && kcalDepensees > 0) {
+          const avant = progressionQuete(queteRecompense);
+          queteRecompense = {
+            ...queteRecompense,
+            kcalAccumulees: queteRecompense.kcalAccumulees + kcalDepensees,
+          };
+          recompenseDebloquee = avant < 1 && progressionQuete(queteRecompense) >= 1;
+        }
+
+        const pointsGagnes = Math.max(0, niveauFinal - niveauAvant) * POINTS_PAR_NIVEAU;
+
         const entree: EntreeJournal = {
           id: identifiant(),
           date: new Date().toISOString(),
@@ -262,6 +345,8 @@ export const useJeu = create<EtatJeu>()(
           noeudsTermines,
           journal: [entree, ...etat.journal].slice(0, TAILLE_JOURNAL),
           seancesTerminees: etat.seancesTerminees + 1,
+          queteRecompense,
+          pointsDisponibles: etat.pointsDisponibles + pointsGagnes,
           seancePreparee: null,
           noeudVise: null,
         });
@@ -280,6 +365,9 @@ export const useJeu = create<EtatJeu>()(
           serie,
           exercicesPossiblesAvant: vivier(niveauAvant),
           exercicesPossiblesApres: vivier(niveauFinal),
+          kcalDepensees,
+          pointsGagnes,
+          recompenseDebloquee,
         };
       },
 
@@ -335,6 +423,97 @@ export const useJeu = create<EtatJeu>()(
         return { compte: true, record, ancienRecord, xpGagnee, niveauAvant, niveauApres };
       },
 
+
+      /* --------------------------- Système --------------------------- */
+
+      allouerPoint: (stat) =>
+        set((etat) => {
+          if (etat.pointsDisponibles <= 0) return etat;
+          return {
+            pointsDisponibles: etat.pointsDisponibles - 1,
+            pointsAlloues: { ...etat.pointsAlloues, [stat]: etat.pointsAlloues[stat] + 1 },
+          };
+        }),
+
+      choisirRecompense: (recompenseId) =>
+        set({
+          queteRecompense: {
+            recompenseId,
+            kcalAccumulees: 0,
+            debutee: new Date().toISOString(),
+          },
+        }),
+
+      // Changer d'avis est permis, mais reprendre la même récompense
+      // repart de zéro : sans quoi on cumulerait sur toutes en parallèle.
+      abandonnerQuete: () => set({ queteRecompense: null }),
+
+      reclamerRecompense: () =>
+        set((etat) => {
+          if (!etat.queteRecompense || progressionQuete(etat.queteRecompense) < 1) return etat;
+          return {
+            queteRecompense: null,
+            recompensesDebloquees: [
+              { recompenseId: etat.queteRecompense.recompenseId, date: new Date().toISOString() },
+              ...etat.recompensesDebloquees,
+            ].slice(0, 50),
+          };
+        }),
+
+      validerQueteJournaliere: () =>
+        set((etat) => {
+          const aujourdhui = jourLocal(new Date());
+          if (etat.joursQueteFaite.includes(aujourdhui)) return etat;
+
+          const quete = queteJournaliere(
+            aujourdhui,
+            niveauDepuisXp(etat.xpTotal).niveau,
+            etat.reglages.materielDispo,
+            etat.reglages.silencieux,
+          );
+
+          return {
+            xpTotal: etat.xpTotal + quete.xpRecompense,
+            joursQueteFaite: [aujourdhui, ...etat.joursQueteFaite].slice(0, 90),
+            enchainement: majEnchainement(etat.enchainement, aujourdhui),
+          };
+        }),
+
+      /**
+       * Applique les quêtes journalières manquées depuis la dernière
+       * visite. Appelé une fois à l'ouverture : la sanction doit se
+       * sentir, jamais dissuader de revenir — d'où les plafonds du
+       * moteur et l'impossibilité de perdre un rang.
+       */
+      verifierPenalites: () => {
+        const etat = get();
+        const aujourdhui = jourLocal(new Date());
+
+        if (!etat.dernierJourVu) {
+          set({ dernierJourVu: aujourdhui });
+          return null;
+        }
+        if (etat.dernierJourVu === aujourdhui) return null;
+
+        const manques = joursManquesEntre(etat.dernierJourVu, aujourdhui, etat.joursQueteFaite);
+        const penalite = calculerPenalite(manques, etat.xpTotal);
+
+        if (penalite.joursManques === 0) {
+          set({ dernierJourVu: aujourdhui });
+          return null;
+        }
+
+        const seuil = xpCumuleePourAtteindre(niveauDepuisXp(etat.xpTotal).niveau);
+        set({
+          xpTotal: appliquerPenalite(etat.xpTotal, penalite, seuil),
+          enchainement: { serie: 0, dernierJour: etat.enchainement.dernierJour },
+          dernierJourVu: aujourdhui,
+        });
+        return penalite;
+      },
+
+      marquerEveille: () => set({ eveille: true }),
+
       toutEffacer: () =>
         set({
           xpTotal: 0,
@@ -345,6 +524,13 @@ export const useJeu = create<EtatJeu>()(
           recordsDefis: {},
           journal: [],
           seancesTerminees: 0,
+          pointsDisponibles: 0,
+          pointsAlloues: pointsVides(),
+          queteRecompense: null,
+          recompensesDebloquees: [],
+          joursQueteFaite: [],
+          dernierJourVu: null,
+          eveille: false,
           seancePreparee: null,
           noeudVise: null,
           reglages: REGLAGES_PAR_DEFAUT,
@@ -366,6 +552,13 @@ export const useJeu = create<EtatJeu>()(
         journal: etat.journal,
         reglages: etat.reglages,
         seancesTerminees: etat.seancesTerminees,
+        pointsDisponibles: etat.pointsDisponibles,
+        pointsAlloues: etat.pointsAlloues,
+        queteRecompense: etat.queteRecompense,
+        recompensesDebloquees: etat.recompensesDebloquees,
+        joursQueteFaite: etat.joursQueteFaite,
+        dernierJourVu: etat.dernierJourVu,
+        eveille: etat.eveille,
       }),
       // On lève le drapeau même si la relecture a échoué : mieux vaut
       // repartir d'une progression vide que rester bloqué sur l'écran de

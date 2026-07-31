@@ -1,6 +1,8 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { couleurs, espace, rayon, texte } from '../theme';
 import { Bouton, EtatVide, LigneInfo, Panneau, Puce, TitreSection } from '../composants/base';
@@ -10,10 +12,12 @@ import { niveauDepuisXp, statDominante, titrePourNiveau } from '../../moteur/pro
 import { EMOJI_STAT, LIBELLE_STAT } from '../../moteur/types';
 import { NIVEAU_DERNIER_DEBLOCAGE } from '../../moteur/exercices';
 import type { EntreeJournal } from '../../etat/magasin';
+import type { ParamsPile } from '../navigation';
 
 /** Journal des séances : la preuve, jour après jour, que ça a bien eu lieu. */
 export default function Journal() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NativeStackNavigationProp<ParamsPile>>();
 
   const journal = useJeu((e) => e.journal);
   const xpTotal = useJeu((e) => e.xpTotal);
@@ -75,6 +79,17 @@ export default function Journal() {
 
       <TitreSection>Réglages</TitreSection>
       <Panneau>
+        <LigneInfo
+          libelle="Poids (pour l'estimation des calories)"
+          valeur={reglages.poidsKg ? `${reglages.poidsKg} kg` : 'non renseigné'}
+          couleurValeur={reglages.poidsKg ? couleurs.accent : couleurs.texteFaible}
+        />
+        <Bouton
+          titre={reglages.poidsKg ? 'Modifier le poids' : 'Renseigner mon poids'}
+          variante="fantome"
+          onPress={() => navigation.navigate('Recompenses')}
+          style={{ marginTop: espace.s, marginBottom: espace.m }}
+        />
         <Bascule
           titre="Sons pendant la séance"
           description="Décompte des trois dernières secondes et signal au changement d'exercice. Ils se mêlent à ta musique sans la couper."
