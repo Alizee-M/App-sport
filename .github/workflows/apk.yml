@@ -124,5 +124,5 @@ jobs:
             ---
 
             Version ${{ steps.apk.outputs.version }} · commit
-            ${{ github.sha }} · types et 140 tests au vert.
+            ${{ github.sha }} · types et 151 tests au vert.
             Architectures : arm64-v8a et armeabi-v7a.

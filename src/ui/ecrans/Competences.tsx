@@ -19,6 +19,7 @@ import {
   type Volumes,
 } from '../../moteur/competences';
 import { exerciceParId } from '../../moteur/exercices';
+import { useEntrainementVoie, phraseMaterielManquant } from '../entrainementVoie';
 import type { ParamsPile } from '../navigation';
 
 type Props = NativeStackScreenProps<ParamsPile, 'Competences'>;
@@ -49,10 +50,18 @@ export default function Competences({ navigation }: Props) {
   const volumes = useJeu((e) => e.volumes);
   const choisirVoie = useJeu((e) => e.choisirVoie);
   const validerPalier = useJeu((e) => e.validerPalier);
+  const preparerSeance = useJeu((e) => e.preparerSeance);
 
   const [franchi, setFranchi] = useState<string | null>(null);
 
   const active = voieActive ? voieParId(voieActive) : undefined;
+
+  /* L'entraînement dédié : toute la séance est construite autour du geste
+   * de l'étape, au lieu de l'attendre au détour d'un tirage. */
+  const entrainement = useEntrainementVoie();
+  const seanceVoie = entrainement?.tirage.possible ? entrainement.tirage.seance : null;
+  const materielManquant =
+    entrainement && !entrainement.tirage.possible ? entrainement.tirage.materielManquant : null;
 
   return (
     <ScrollView
@@ -97,11 +106,37 @@ export default function Competences({ navigation }: Props) {
             }}
           />
 
+          {/* --- Lancer l'entraînement de la voie --- */}
+          {seanceVoie ? (
+            <>
+              <Bouton
+                titre={`Lancer l'entraînement · ~${Math.round(seanceVoie.dureeEstimeeSec / 60)} min`}
+                icone="▶"
+                onPress={() => {
+                  preparerSeance(seanceVoie, null);
+                  navigation.replace('Seance');
+                }}
+                style={{ marginTop: espace.l }}
+              />
+              <Text style={styles.detailLancement}>
+                Le geste de l'étape en premier, à froid et avec du repos, puis ses exercices
+                de soutien. Tout ce que tu fais compte pour l'étape.
+              </Text>
+            </>
+          ) : null}
+
+          {materielManquant ? (
+            <View style={styles.blocage}>
+              <Text style={styles.blocageTexte}>⚠ {phraseMaterielManquant(materielManquant)}</Text>
+            </View>
+          ) : null}
+
           <Bouton
-            titre="Tirer une séance"
+            titre="Tirer une séance libre"
             icone="🎲"
+            variante="secondaire"
             onPress={() => navigation.replace('Tirage')}
-            style={{ marginTop: espace.l }}
+            style={{ marginTop: espace.s }}
           />
           <Bouton
             titre="Abandonner cette voie"
@@ -321,6 +356,23 @@ const styles = StyleSheet.create({
   gras: { color: couleurs.texte, fontWeight: '700' },
 
   objectifActif: { ...texte.corps, color: couleurs.texteDoux, fontStyle: 'italic' },
+
+  detailLancement: {
+    ...texte.minuscule,
+    color: couleurs.texteFaible,
+    marginTop: espace.s,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+  blocage: {
+    marginTop: espace.l,
+    padding: espace.m,
+    borderRadius: rayon.s,
+    borderWidth: 1,
+    borderColor: couleurs.danger,
+    backgroundColor: 'rgba(255,107,53,0.08)',
+  },
+  blocageTexte: { ...texte.minuscule, color: couleurs.texteDoux, lineHeight: 17 },
 
   /* --- L'étape en cours --- */
   encadreCourant: {

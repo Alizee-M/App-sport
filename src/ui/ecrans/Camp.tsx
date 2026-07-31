@@ -41,6 +41,7 @@ import {
 import { exerciceParId } from '../../moteur/exercices';
 import { genererSeance, genererSeanceQuete } from '../../moteur/seance';
 import { grainePourJour } from '../../moteur/systeme';
+import { useEntrainementVoie } from '../entrainementVoie';
 import { EMOJI_STAT, LIBELLE_STAT, STATS } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
 
@@ -129,6 +130,9 @@ export default function Camp() {
   }, [reglages, niveau.niveau]);
 
   const recompense = quete ? recompenseParId(quete.recompenseId) : undefined;
+
+  const entrainementVoie = useEntrainementVoie();
+  const seanceVoie = entrainementVoie?.tirage.possible ? entrainementVoie.tirage.seance : null;
 
   const voie = voieActive ? voieParId(voieActive) : undefined;
   const palierEnCours = voie ? palierCourant(voie, paliersValides) : null;
@@ -319,11 +323,22 @@ export default function Camp() {
                 : `Pratique du palier : ${Math.round(pratique * 100)} %. Tes séances travaillent ce geste.`}
             </Text>
 
+            {seanceVoie && pratique < 1 ? (
+              <Bouton
+                titre={`Lancer l'entraînement · ~${Math.round(seanceVoie.dureeEstimeeSec / 60)} min`}
+                icone="▶"
+                onPress={() => {
+                  preparerSeance(seanceVoie, null);
+                  navigation.navigate('Seance');
+                }}
+                style={{ marginTop: espace.m }}
+              />
+            ) : null}
             <Bouton
               titre={pratique >= 1 ? 'Passer le test' : 'Voir la voie'}
               variante={pratique >= 1 ? 'principal' : 'fantome'}
               onPress={() => navigation.navigate('Competences')}
-              style={{ marginTop: espace.m }}
+              style={{ marginTop: espace.s }}
             />
           </>
         ) : (

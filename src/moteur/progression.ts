@@ -75,6 +75,9 @@ const MULTIPLICATEUR_TYPE: Record<TypeSeance, number> = {
   // La quête journalière fixe elle-même sa récompense : ce multiplicateur
   // ne sert pas, l'XP promise est celle annoncée par la quête.
   quete: 1,
+  // L'entraînement d'une voie paie comme une séance ordinaire : sa
+  // récompense, c'est la compétence, pas un bonus d'XP.
+  voie: 1,
 };
 
 /**

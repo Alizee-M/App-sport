@@ -121,6 +121,15 @@ pratique accumulée. Le test lui-même se valide sur parole — aucun
 téléphone ne peut vérifier un équilibre — mais on ne peut pas sauter les
 marches.
 
+Une voie a **son propre entraînement**, lançable en un bouton : le geste
+de l'étape d'abord, à froid et avec deux fois plus de repos qu'en circuit
+— un équilibre s'apprend frais, pas à bout de souffle —, puis ses
+exercices de soutien. Le geste plafonne à six séries : au-delà, on ne
+répète plus qu'une mauvaise version du mouvement, alors le temps restant
+se remplit par un bloc ordinaire plutôt que de rendre une séance deux fois
+plus courte que celle demandée. Si l'exercice de l'étape exige un matériel
+absent, l'app le dit au lieu de lui substituer autre chose.
+
 L'écran d'une voie répond à une seule question : *qu'est-ce que je dois
 faire, concrètement ?* D'où l'exercice nommé en grand avec sa consigne, le
 compte exact — « 182 sur 300 répétitions, il reste 118 à faire en séance »
@@ -183,7 +192,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 140 tests échouent : ce qui est publié a donc
+vérification des types ou les 151 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -205,7 +214,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 140 tests sur le moteur de jeu
+npm test          # 151 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -253,7 +262,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               140 tests node:test
+tests/               151 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -280,6 +289,10 @@ Les garde-fous du tirage passent avant tout le reste :
 - les paliers d'une voie vont bien du plus facile au plus difficile, une
   voie active fait sortir son exercice dans au moins 85 % des tirages, et
   cette priorité ne casse aucune contrainte de niveau, matériel ou bruit ;
+- l'entraînement d'une voie isole le geste dans son premier bloc, lui
+  laisse plus de repos qu'aux exercices de soutien, tient le temps demandé
+  à 15 % près jusqu'à 30 minutes, et ne se laisse pas bloquer par le
+  niveau requis — seulement par le matériel, qu'il annonce ;
 - la séance de quête journalière fait **exactement** le compte annoncé
   (tours × répétitions = objectif), garde échauffement et retour au calme,
   respecte le matériel et le mode appartement, et tient entre 3 et 30

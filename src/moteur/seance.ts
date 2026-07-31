@@ -4,6 +4,7 @@ import type {
   ExercicePrescrit,
   Famille,
   Intensite,
+  Materiel,
   OptionsTirage,
   Seance,
   Stat,
@@ -634,6 +635,207 @@ export function genererSeanceQuete(
 
   const dureeEstimeeSec = dureeTotaleEtapes(construireEtapes(seance));
   return { ...seance, dureeEstimeeSec, dureeDemandeeMin: Math.round(dureeEstimeeSec / 60) };
+}
+
+/* ---------------------- L'entraînement d'une voie --------------------- */
+
+/**
+ * Repos entre deux séries du geste travaillé.
+ *
+ * Deux fois plus long que dans un circuit, et c'est voulu : un équilibre
+ * ou une pompe sur un bras s'apprennent frais. Enchaîner à bout de souffle
+ * n'entraîne plus la compétence, seulement la fatigue.
+ */
+const REPOS_GESTE = 45;
+
+export type TirageVoie =
+  | { possible: true; seance: Seance }
+  | { possible: false; materielManquant: Materiel[] };
+
+/**
+ * La séance dédiée à une voie de compétence.
+ *
+ * Le tirage ordinaire glisse l'exercice de l'étape au milieu d'autre
+ * chose ; ici toute la séance est construite autour de lui : le geste
+ * d'abord, à froid et avec du repos, puis ses appuis en circuit.
+ *
+ * Le niveau requis est délibérément ignoré — la voie *est* le chemin de
+ * déblocage, et ses étapes ne s'atteignent qu'après avoir passé les
+ * précédentes. Le matériel et le bruit, eux, sont des contraintes
+ * physiques : on ne les contourne pas, on le dit.
+ */
+export function genererSeanceVoie(
+  palierExerciceId: string,
+  soutiensIds: string[],
+  nomVoie: string,
+  options: OptionsTirage,
+): TirageVoie {
+  const geste = exerciceParId(palierExerciceId);
+  if (!geste) return { possible: false, materielManquant: [] };
+
+  const manquant = geste.materiel.filter((m) => !options.materielDispo.includes(m));
+  if (manquant.length > 0 || (options.silencieux && geste.bruit === 'bruyant')) {
+    return { possible: false, materielManquant: manquant };
+  }
+
+  const alea = creerAlea(options.seed);
+  const filtreBase = {
+    niveau: options.niveau,
+    materielDispo: options.materielDispo,
+    silencieux: options.silencieux,
+  };
+
+  const travailSec = TEMPS_TRAVAIL[options.intensite];
+
+  const appuis = soutiensIds
+    .map((id) => exerciceParId(id))
+    .filter((e): e is Exercice => Boolean(e) && estJouable(e!, { ...options, niveau: 99 }))
+    .filter((e) => e.id !== geste.id)
+    .slice(0, 3);
+
+  /* --- Échauffement et étirements, tirés une seule fois ---
+   * Les zones sont connues d'avance : ce sont celles du geste et de ses
+   * appuis. On les tire avant la boucle de calibrage pour que le hasard
+   * ne dépende pas du nombre de tours retenu. */
+  const zonesVisees = new Set<ZoneCorps>();
+  for (const exercice of [geste, ...appuis]) {
+    for (const zone of zonesDe(exercice)) zonesVisees.add(zone);
+  }
+
+  const court = options.dureeMin <= 15;
+
+  const poolEchauffement = exercicesDisponibles({ ...filtreBase, phase: 'echauffement' });
+  const echauffement = tirerPondere(
+    alea,
+    poolEchauffement,
+    Math.min(court ? 3 : 4, poolEchauffement.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
+  const poolEtirements = exercicesDisponibles({ ...filtreBase, phase: 'retour_calme' });
+  const retourCalme = tirerPondere(
+    alea,
+    poolEtirements,
+    Math.min(court ? 2 : 3, poolEtirements.length),
+    (e) => poidsFraicheur(e, options.historiqueIds) * poidsZones(e, zonesVisees),
+  ).map(prescrireMobilite);
+
+  /* --- De quoi remplir une séance longue ---
+   * Répéter le geste pendant quarante-cinq minutes n'entraîne pas une
+   * compétence, ça détruit des épaules. Au-delà de ce que le travail
+   * technique supporte, on complète par un bloc ordinaire plutôt que de
+   * rendre une séance deux fois plus courte que celle demandée. */
+  const exclus = new Set([geste.id, ...appuis.map((e) => e.id)]);
+  const poolComplement = exercicesDisponibles({
+    ...filtreBase,
+    phase: 'bloc',
+    familles: FAMILLES_EFFORT,
+  }).filter((e) => !exclus.has(e.id));
+
+  const complement = tirerPourBloc(
+    alea,
+    poolComplement,
+    Math.min(3, poolComplement.length),
+    options,
+    exclus,
+    difficulteCible(options.niveau, options.intensite),
+  ).map((e) => prescrire(e, travailSec, options.intensite, options.niveau));
+
+  const construire = (toursGeste: number, toursAppuis: number, toursComplement: number): Seance => {
+    const blocs: Bloc[] = [
+      {
+        nom: `Le geste · ${geste.nom}`,
+        tours: toursGeste,
+        travailSec,
+        reposSec: REPOS_GESTE,
+        exercices: [prescrire(geste, travailSec, options.intensite, options.niveau)],
+      },
+    ];
+
+    if (appuis.length > 0 && toursAppuis > 0) {
+      blocs.push({
+        nom: 'Les appuis',
+        tours: toursAppuis,
+        travailSec,
+        reposSec: TEMPS_REPOS[options.intensite],
+        exercices: appuis.map((e) => prescrire(e, travailSec, options.intensite, options.niveau)),
+      });
+    }
+
+    if (complement.length > 0 && toursComplement > 0) {
+      blocs.push({
+        nom: 'Le reste du corps',
+        tours: toursComplement,
+        travailSec,
+        reposSec: TEMPS_REPOS[options.intensite],
+        exercices: complement,
+      });
+    }
+
+    return {
+      seed: options.seed,
+      type: 'voie',
+      titre: `Entraînement · ${nomVoie}`,
+      echauffement,
+      blocs,
+      retourCalme,
+      // Une séance de compétence se joue proprement ou pas du tout : une
+      // carte « tempo escargot » par-dessus un poirier n'a pas de sens.
+      modificateurs: [],
+      dureeEstimeeSec: 0,
+      dureeDemandeeMin: options.dureeMin,
+      intensite: options.intensite,
+      focus: options.focus,
+      xpPotentiel: 0,
+    };
+  };
+
+  /* --- Calibrage sur le temps demandé ---
+   * On mesure chaque candidate sur son déroulé réel plutôt que d'estimer :
+   * c'est l'invariant de l'app, la durée annoncée est la vraie. */
+  const budget = options.dureeMin * 60;
+  const maxAppuis = appuis.length > 0 ? 4 : 0;
+  const maxComplement = complement.length > 0 ? 4 : 0;
+
+  let meilleure = construire(3, Math.min(2, maxAppuis), 0);
+  let meilleurEcart = Infinity;
+  let meilleurGeste = 0;
+
+  // Le geste plafonne à six séries : au-delà, la qualité technique tombe
+  // et on ne répète plus qu'une mauvaise version du mouvement. En dessous
+  // de deux, ce n'est plus un entraînement.
+  for (let toursGeste = 2; toursGeste <= 6; toursGeste++) {
+    for (let toursAppuis = 0; toursAppuis <= maxAppuis; toursAppuis++) {
+      for (let toursComplement = 0; toursComplement <= maxComplement; toursComplement++) {
+        const candidate = construire(toursGeste, toursAppuis, toursComplement);
+        const ecart = Math.abs(dureeTotaleEtapes(construireEtapes(candidate)) - budget);
+
+        // À vingt secondes près, deux découpages sont équivalents pour qui
+        // les exécute : on tranche alors en faveur de celui qui travaille
+        // le plus le geste. C'est lui qu'on est venu faire progresser, le
+        // reste ne sert qu'à remplir le temps demandé.
+        const nettementMieux = ecart < meilleurEcart - 20;
+        const equivalent = Math.abs(ecart - meilleurEcart) <= 20;
+
+        if (nettementMieux || (equivalent && toursGeste > meilleurGeste)) {
+          meilleure = candidate;
+          meilleurEcart = ecart;
+          meilleurGeste = toursGeste;
+        }
+      }
+    }
+  }
+
+  const dureeEstimeeSec = dureeTotaleEtapes(construireEtapes(meilleure));
+
+  return {
+    possible: true,
+    seance: {
+      ...meilleure,
+      dureeEstimeeSec,
+      xpPotentiel: xpPotentielSeance(dureeEstimeeSec, options.intensite, 'voie', 1),
+    },
+  };
 }
 
 /**

@@ -141,7 +141,9 @@ function LigneJournal({ entree }: { entree: EntreeJournal }) {
               ? '🗺️'
               : entree.type === 'quete'
                 ? '📜'
-                : '🎲'}
+                : entree.type === 'voie'
+                  ? '⭐'
+                  : '🎲'}
       </Text>
       <View style={{ flex: 1 }}>
         <Text style={styles.entreeTitre} numberOfLines={1}>
