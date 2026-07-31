@@ -13,7 +13,9 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # React Native se recompile depuis ses sources C++ : le premier build
+    # est long, les suivants profitent du cache Gradle.
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +33,16 @@ jobs:
       - name: Préparer le SDK Android
         uses: android-actions/setup-android@v3
 
+      # Sans ce cache, chaque build recompile l'intégralité du code natif.
+      - name: Réutiliser le cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Installer les dépendances
         run: npm ci
 
@@ -44,8 +56,12 @@ jobs:
       - name: Générer le projet natif
         run: npx expo prebuild --platform android --no-install --clean
 
+      # On ne compile que les deux architectures ARM : elles couvrent la
+      # totalité des téléphones Android du marché. Inclure aussi les deux
+      # variantes x86, réservées aux émulateurs, doublait le temps de
+      # compilation du code natif pour rien.
       - name: Compiler l'APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
         working-directory: android
 
       - name: Renommer l'APK
