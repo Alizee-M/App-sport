@@ -8,6 +8,8 @@ import {
   secondesRestantes,
   formaterChrono,
   estEffort,
+  reposApres,
+  plageRepos,
 } from '../src/moteur/deroulement';
 import { genererSeance } from '../src/moteur/seance';
 import type { OptionsTirage } from '../src/moteur/types';
@@ -176,4 +178,92 @@ test('le chrono s\'affiche en minutes et secondes', () => {
   assert.equal(formaterChrono(60), '1:00');
   assert.equal(formaterChrono(125), '2:05');
   assert.equal(formaterChrono(-5), '0:00', 'un temps négatif s\'affiche à zéro');
+});
+
+/* ------------------- Le repos s'adapte à l'exercice ------------------- */
+
+test('on souffle plus longtemps après un exercice difficile qu\'après un facile', () => {
+  const seance = genererSeance(options({ dureeMin: 30, niveau: 12, seed: 5 }));
+
+  let compare = 0;
+  for (const bloc of seance.blocs) {
+    const durees = bloc.exercices.map((p) => ({
+      difficulte: p.exercice.difficulte,
+      repos: reposApres(bloc, p),
+      nom: p.exercice.nom,
+    }));
+
+    for (const a of durees) {
+      for (const b of durees) {
+        if (a.difficulte <= b.difficulte) continue;
+        compare += 1;
+        assert.ok(
+          a.repos >= b.repos,
+          `${a.nom} (difficulté ${a.difficulte}) donne ${a.repos} s de repos, ` +
+            `moins que ${b.nom} (difficulté ${b.difficulte}, ${b.repos} s)`,
+        );
+      }
+    }
+  }
+  assert.ok(compare > 0, 'aucun bloc ne mélangeait des difficultés différentes : le test ne prouve rien');
+});
+
+test('le repos reste dans des bornes raisonnables', () => {
+  for (const intensite of [1, 2, 3] as const) {
+    for (let seed = 1; seed <= 20; seed++) {
+      const seance = genererSeance(options({ intensite, seed, niveau: 15 }));
+      for (const bloc of seance.blocs) {
+        // Une carte du jour peut légitimement supprimer les repos d'un
+        // bloc : c'est alors zéro, et non un repos trop court.
+        if (bloc.reposSec === 0) continue;
+
+        for (const prescrit of bloc.exercices) {
+          const repos = reposApres(bloc, prescrit);
+          assert.ok(repos >= 10, `repos de ${repos} s : trop court pour souffler`);
+          assert.ok(repos <= 60, `repos de ${repos} s : ce n'est plus une séance`);
+          assert.equal(repos % 5, 0, `repos de ${repos} s : devrait être arrondi à 5 s près`);
+        }
+      }
+    }
+  }
+});
+
+test('adapter le repos ne fait pas dériver la durée de la séance', () => {
+  // Le repos est redistribué dans le bloc, pas ajouté : le temps demandé
+  // doit rester tenu.
+  for (const dureeMin of [10, 20, 30, 45]) {
+    for (let seed = 1; seed <= 10; seed++) {
+      const seance = genererSeance(options({ dureeMin, seed, nbModificateurs: 0 }));
+      const ecart = Math.abs(seance.dureeEstimeeSec / 60 - dureeMin) / dureeMin;
+      assert.ok(
+        ecart <= 0.2,
+        `${dureeMin} min demandées, ${(seance.dureeEstimeeSec / 60).toFixed(1)} min obtenues`,
+      );
+    }
+  }
+});
+
+test('une carte qui supprime les repos les supprime vraiment', () => {
+  const seance = genererSeance(options({ modificateursImposes: ['contre_la_montre'] }));
+  for (const prescrit of seance.blocs[0].exercices) {
+    assert.equal(reposApres(seance.blocs[0], prescrit), 0);
+  }
+  const { min, max } = plageRepos(seance.blocs[0]);
+  assert.equal(min, 0);
+  assert.equal(max, 0);
+});
+
+test('la plage annoncée correspond aux repos réellement joués', () => {
+  const seance = genererSeance(options({ dureeMin: 30, niveau: 12, seed: 9 }));
+  const etapes = construireEtapes(seance);
+
+  seance.blocs.forEach((bloc, index) => {
+    const { min, max } = plageRepos(bloc);
+    const joues = etapes
+      .filter((e) => e.genre === 'repos' && e.blocIndex === index)
+      .map((e) => e.secondes);
+    if (joues.length === 0) return;
+    assert.equal(Math.min(...joues), min, `bloc ${index + 1} : minimum annoncé faux`);
+    assert.equal(Math.max(...joues), max, `bloc ${index + 1} : maximum annoncé faux`);
+  });
 });

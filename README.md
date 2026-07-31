@@ -73,6 +73,11 @@ se coupent depuis le Journal.
 L'**échauffement et les étirements ciblent les zones réellement
 sollicitées** : pas de mobilisation d'épaules avant une séance de jambes.
 
+Le **repos s'ajuste à l'exercice qu'on vient de terminer** : on ne souffle
+pas aussi longtemps après des extensions de mollets qu'après des burpees.
+Il est redistribué à l'intérieur du bloc plutôt qu'ajouté, si bien que la
+séance tient toujours dans le temps annoncé.
+
 ---
 
 ## Installer l'app sur ton téléphone
@@ -90,7 +95,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 88 tests échouent : ce qui est publié a donc
+vérification des types ou les 93 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -112,7 +117,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 88 tests sur le moteur de jeu
+npm test          # 93 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -157,7 +162,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               88 tests node:test
+tests/               93 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -177,4 +182,7 @@ Les garde-fous du tirage passent avant tout le reste :
   aucune carte de comportement n'y touche ;
 - un défi validé sans rien faire ne rapporte aucune XP et ne décroche
   aucun record ;
-- l'échauffement prépare toujours au moins une zone qui va travailler.
+- l'échauffement prépare toujours au moins une zone qui va travailler ;
+- le repos qui suit un exercice difficile n'est jamais plus court que
+  celui d'un exercice facile du même bloc, et ajuster les repos ne fait
+  pas dériver la durée de la séance.

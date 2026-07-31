@@ -19,6 +19,7 @@ import { niveauDepuisXp } from '../../moteur/progression';
 import { genererSeance, retirerExercice, retirerModificateur } from '../../moteur/seance';
 import { graineAleatoire } from '../../moteur/alea';
 import { noeudParId, optionsPourNoeud } from '../../moteur/aventure';
+import { plageRepos } from '../../moteur/deroulement';
 import { LIBELLE_MATERIEL, LIBELLE_FOCUS, LIBELLE_INTENSITE } from '../../moteur/types';
 import type { Focus, Intensite, Materiel, OptionsTirage, Seance } from '../../moteur/types';
 import type { ParamsPile } from '../navigation';
@@ -281,7 +282,14 @@ function Apercu({
             <View key={indexBloc}>
               <TitreSection>{`Bloc ${indexBloc + 1} · ${bloc.nom}`}</TitreSection>
               <Text style={styles.detailBloc}>
-                {bloc.tours} tours · {bloc.travailSec} s d'effort · {bloc.reposSec} s de repos
+                {bloc.tours} tours · {bloc.travailSec} s d'effort ·{' '}
+                {(() => {
+                  // Le repos varie avec la difficulté : l'annoncer évite de
+                  // croire à une incohérence en voyant 15 s puis 25 s.
+                  const { min, max } = plageRepos(bloc);
+                  if (max === 0) return 'aucun repos';
+                  return min === max ? `${min} s de repos` : `repos de ${min} à ${max} s`;
+                })()}
               </Text>
               <View style={{ gap: espace.s, marginTop: espace.m }}>
                 {bloc.exercices.map((prescrit, indexExo) => (

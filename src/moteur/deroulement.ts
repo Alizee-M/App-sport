@@ -1,4 +1,4 @@
-import type { ExercicePrescrit, Seance } from './types';
+import type { Bloc, ExercicePrescrit, Seance } from './types';
 
 /* ----------------------------------------------------------------------
  * Le déroulé minute par minute d'une séance.
@@ -28,6 +28,41 @@ export interface Etape {
 }
 
 const CHIFFRES_ROMAINS = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+
+/**
+ * En dessous, ce n'est plus un repos : autant enchaîner franchement.
+ * Multiple de 5, comme tous les repos affichés.
+ */
+const REPOS_MINIMUM = 10;
+
+/**
+ * Repos qui suit un exercice donné, ajusté à sa difficulté.
+ *
+ * Souffler autant après des extensions de mollets qu'après des burpees
+ * n'a pas de sens. L'écart se mesure par rapport à la moyenne du bloc :
+ * on redistribue le repos entre les exercices au lieu d'en ajouter, si
+ * bien que la séance tient toujours dans le temps annoncé.
+ */
+export function reposApres(bloc: Bloc, prescrit: ExercicePrescrit): number {
+  if (bloc.reposSec <= 0) return 0;
+  if (bloc.exercices.length === 0) return bloc.reposSec;
+
+  const moyenne =
+    bloc.exercices.reduce((somme, p) => somme + p.exercice.difficulte, 0) /
+    bloc.exercices.length;
+
+  const ecart = prescrit.exercice.difficulte - moyenne;
+  const ajuste = bloc.reposSec * (1 + 0.22 * ecart);
+
+  // Arrondi à 5 s : un repos de 17 secondes serait exact et illisible.
+  return Math.max(REPOS_MINIMUM, Math.round(ajuste / 5) * 5);
+}
+
+/** Repos le plus court et le plus long d'un bloc, pour l'annoncer à l'avance. */
+export function plageRepos(bloc: Bloc): { min: number; max: number } {
+  const durees = bloc.exercices.map((p) => reposApres(bloc, p));
+  return { min: Math.min(...durees), max: Math.max(...durees) };
+}
 
 /**
  * Déplie la séance en une suite d'étapes chronologiques.
@@ -90,7 +125,9 @@ export function construireEtapes(seance: Seance): Etape[] {
             : bloc.exercices[exoIndex + 1].exercice.nom;
           etapes.push({
             genre: 'repos',
-            secondes: bloc.reposSec,
+            // Le repos dépend de l'exercice qu'on vient de terminer, pas
+            // de celui qui arrive : c'est de celui-là qu'on récupère.
+            secondes: reposApres(bloc, prescrit),
             titre: 'Repos',
             contexte: `${nomBloc} · Tour ${tour}/${bloc.tours}`,
             suivant,
