@@ -5,6 +5,7 @@ export * from './alea';
 export * from './exercices';
 export * from './modificateurs';
 export * from './seance';
+export * from './deroulement';
 export * from './progression';
 export * from './aventure';
 export * from './defis';

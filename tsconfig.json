@@ -2,5 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  // Les tests sont vérifiés par tsconfig.tests.json, le seul à charger les
+  // types Node : les inclure ici ferait échouer la vérification de l'app.
+  "exclude": ["node_modules", "tests", "build-tests"]
 }

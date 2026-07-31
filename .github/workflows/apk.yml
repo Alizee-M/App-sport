@@ -1,0 +1,75 @@
+name: Construire l'APK Android
+
+# Produit un APK installable directement sur le téléphone, sans passer par
+# le Play Store ni par un compte Expo : le projet natif est régénéré à
+# chaque fois par `expo prebuild`, puis compilé par Gradle.
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Préparer le SDK Android
+        uses: android-actions/setup-android@v3
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      # Le moteur de jeu est testable sans appareil : autant refuser de
+      # produire un APK à partir d'une logique cassée.
+      - name: Vérifier les types et lancer les tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Générer le projet natif
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Compiler l'APK
+        run: ./gradlew assembleRelease --no-daemon
+        working-directory: android
+
+      - name: Renommer l'APK
+        id: apk
+        run: |
+          chemin=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          version=$(node -p "require('./app.json').expo.version")
+          nom="heros-de-salon-${version}-${GITHUB_SHA::7}.apk"
+          mv "$chemin" "$nom"
+          echo "nom=$nom" >> "$GITHUB_OUTPUT"
+          ls -lh "$nom"
+
+      - name: Publier l'APK en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: heros-de-salon-apk
+          path: ${{ steps.apk.outputs.nom }}
+          retention-days: 90
+          if-no-files-found: error
+
+      # Sur une release publiée, l'APK est joint pour être téléchargeable
+      # depuis le téléphone en un seul lien.
+      - name: Joindre l'APK à la release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.apk.outputs.nom }}

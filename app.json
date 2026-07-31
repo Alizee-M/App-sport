@@ -1,17 +1,23 @@
 {
   "expo": {
-    "name": "app-sport",
-    "slug": "app-sport",
+    "name": "Héros de Salon",
+    "slug": "heros-de-salon",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "herosdesalon",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0c0e16",
+    "primaryColor": "#ff6b35",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alizeem.herosdesalon"
     },
     "android": {
+      "package": "com.alizeem.herosdesalon",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0c0e16",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
