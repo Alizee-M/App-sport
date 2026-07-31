@@ -11,7 +11,10 @@ import {
   avancement,
   seanceValideNoeud,
   optionsPourNoeud,
+  convertirNoeudsTermines,
+  NOEUDS_RENOMMES,
 } from '../src/moteur/aventure';
+import { rangPourNiveau, RANGS } from '../src/moteur/systeme';
 import { genererSeance } from '../src/moteur/seance';
 import { DEFIS, defisDisponibles, estRecord, formaterScore, plusGrandEstMeilleur, xpPourDefi } from '../src/moteur/defis';
 import { exerciceParId } from '../src/moteur/exercices';
@@ -27,6 +30,45 @@ test('la carte est cohérente (identifiants uniques, un boss par zone)', () => {
     assert.equal(boss.length, 1, `${zone.nom} devrait avoir exactement un boss`);
     assert.equal(zone.noeuds[zone.noeuds.length - 1].type, 'boss', `le boss de ${zone.nom} doit clore la zone`);
   }
+});
+
+test('le rang d\'un donjon correspond au rang du chasseur au même niveau', () => {
+  // C'est tout l'intérêt de classer les donjons : au niveau 10 on obtient
+  // le rang C et on entre dans les donjons de rang C. Deux échelles qui
+  // se contrediraient ne voudraient plus rien dire.
+  for (const zone of ZONES) {
+    assert.equal(
+      rangPourNiveau(zone.niveauConseille),
+      zone.rang,
+      `${zone.nom} est conseillé au niveau ${zone.niveauConseille}, où le chasseur est de rang ${rangPourNiveau(zone.niveauConseille)}`,
+    );
+  }
+
+  // Et les rangs se suivent, sans saut ni retour en arrière.
+  const rangs = ZONES.map((z) => z.rang);
+  assert.deepEqual(rangs, RANGS, 'les portails doivent couvrir E → S dans l\'ordre');
+});
+
+test('une progression enregistrée sur l\'ancienne carte se reporte', () => {
+  // Renommer des salles ne doit pas coûter une progression.
+  const ancien = ['tapis_1', 'tapis_2', 'tapis_3', 'tapis_4', 'tapis_boss', 'plaines_1'];
+  const converti = convertirNoeudsTermines(ancien);
+
+  assert.deepEqual(converti, ['e_1', 'e_2', 'e_3', 'e_4', 'e_boss', 'd_1']);
+  assert.equal(noeudCourant(converti)?.id, 'd_2');
+  assert.ok(zoneDebloquee(ZONES[1], converti), 'le portail de rang D doit être ouvert');
+
+  // Chaque ancien identifiant vise une salle qui existe encore.
+  const connus = new Set(parcours().map((n) => n.id));
+  for (const [ancienId, nouveau] of Object.entries(NOEUDS_RENOMMES)) {
+    assert.ok(connus.has(nouveau), `${ancienId} renvoie vers ${nouveau}, inconnu`);
+  }
+
+  // Un identifiant qui ne correspond à rien est écarté plutôt que compté :
+  // sinon l'avancement pourrait dépasser 100 %.
+  const bancal = convertirNoeudsTermines(['inconnu', 'e_1', 'e_1']);
+  assert.deepEqual(bancal, ['e_1']);
+  assert.ok(avancement(['inconnu', 'zone_disparue']).progression === 0);
 });
 
 test('la difficulté des nœuds ne redescend pas d\'une zone à l\'autre', () => {

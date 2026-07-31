@@ -138,7 +138,7 @@ function LigneJournal({ entree }: { entree: EntreeJournal }) {
           : entree.type === 'boss'
             ? '👹'
             : entree.type === 'aventure'
-              ? '🗺️'
+              ? '🌀'
               : entree.type === 'quete'
                 ? '📜'
                 : entree.type === 'voie'

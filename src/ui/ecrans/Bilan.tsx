@@ -110,7 +110,7 @@ export default function Bilan({ navigation, route }: Props) {
         {/* ---------------------------- Quête ----------------------------- */}
         {resultat.noeudValide ? (
           <>
-            <TitreSection>Quête accomplie</TitreSection>
+            <TitreSection>Salle nettoyée</TitreSection>
             <Panneau couleurBordure={couleurs.succes}>
               <View style={styles.ligneQuete}>
                 <Text style={styles.emojiQuete}>{resultat.noeudValide.emoji}</Text>
@@ -121,8 +121,8 @@ export default function Bilan({ navigation, route }: Props) {
               </View>
               {resultat.zoneTerminee ? (
                 <Text style={styles.zoneFinie}>
-                  {resultat.zoneTerminee.emoji} Zone « {resultat.zoneTerminee.nom} » entièrement
-                  nettoyée. La suivante t'attend.
+                  {resultat.zoneTerminee.emoji} {resultat.zoneTerminee.nom} entièrement
+                  nettoyé : le portail se referme. Le suivant t'attend.
                 </Text>
               ) : null}
             </Panneau>

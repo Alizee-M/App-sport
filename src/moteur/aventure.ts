@@ -1,12 +1,18 @@
 import type { Focus, Intensite, OptionsTirage, Seance } from './types';
+import type { Rang } from './systeme';
 
 /* ----------------------------------------------------------------------
- * La carte d'aventure.
+ * Les portails.
  *
- * Elle donne une raison de faire *la séance de ce soir* plutôt qu'une
- * séance un jour prochain : il y a une étape juste devant, et un boss au
- * bout de la zone. Chaque nœud impose des exigences minimales — durée,
+ * Ils donnent une raison de faire *la séance de ce soir* plutôt qu'une
+ * séance un jour prochain : il y a une salle juste devant, et un boss au
+ * fond du donjon. Chaque salle impose des exigences minimales — durée,
  * intensité, parfois un focus — mais laisse le tirage faire le reste.
+ *
+ * Les donjons sont classés du rang E au rang S, exactement comme le
+ * chasseur : au niveau 10 on obtient le rang C et on entre dans les
+ * donjons de rang C. Sans cette correspondance, les deux échelles se
+ * contrediraient et le classement ne voudrait plus rien dire.
  * -------------------------------------------------------------------- */
 
 export type TypeNoeud = 'normal' | 'elite' | 'boss';
@@ -32,6 +38,8 @@ export interface Zone {
   id: string;
   nom: string;
   emoji: string;
+  /** Rang du donjon, sur la même échelle que celui du chasseur. */
+  rang: Rang;
   couleur: string;
   intro: string;
   niveauConseille: number;
@@ -40,199 +48,207 @@ export interface Zone {
 
 export const ZONES: Zone[] = [
   {
-    id: 'tapis',
-    nom: 'Le Tapis du Débutant',
-    emoji: '🟩',
-    couleur: '#4ade80',
-    intro: 'Tout commence par un mètre carré de sol dégagé. C\'est déjà un exploit.',
+    id: 'portail_e',
+    nom: 'Portail de rang E',
+    emoji: '🚪',
+    rang: 'E',
+    couleur: '#8b95ad',
+    intro:
+      'Une fissure basse, dans un salon. Aucun danger réel : c\'est là qu\'on apprend à franchir un portail, pas à en revenir.',
     niveauConseille: 1,
     noeuds: [
       {
-        id: 'tapis_1',
-        nom: 'Le Premier Pas',
-        emoji: '👣',
+        id: 'e_1',
+        nom: 'L\'Ouverture',
+        emoji: '🌀',
         type: 'normal',
-        recit: 'Dix minutes. Juste pour prouver que le canapé n\'a pas gagné.',
+        recit: 'Dix minutes de l\'autre côté. Juste pour prouver que le portail s\'ouvre.',
         exigence: { dureeMin: 10, intensiteMin: 1 },
         xpBonus: 30,
       },
       {
-        id: 'tapis_2',
-        nom: 'La Chaussette Perdue',
-        emoji: '🧦',
+        id: 'e_2',
+        nom: 'Les Rôdeurs',
+        emoji: '🐀',
         type: 'normal',
-        recit: 'Elle est sous le meuble. Tu ne la retrouveras pas. Entraîne-toi quand même.',
+        recit: 'Petits, nombreux, inoffensifs un par un. C\'est le « par un » qui pose problème.',
         exigence: { dureeMin: 12, intensiteMin: 1 },
         xpBonus: 35,
       },
       {
-        id: 'tapis_3',
-        nom: 'Les Jambes de Coton',
+        id: 'e_3',
+        nom: 'La Salle Basse',
         emoji: '🦵',
         type: 'normal',
-        recit: 'Aujourd\'hui, on s\'occupe du bas. Demain, les escaliers seront une aventure.',
+        recit: 'Plafond bas, couloir long. On avance sur les jambes et on ne se relève pas.',
         exigence: { dureeMin: 12, intensiteMin: 1, focus: 'force' },
         xpBonus: 40,
       },
       {
-        id: 'tapis_4',
-        nom: 'Le Souffle Court',
-        emoji: '🫁',
+        id: 'e_4',
+        nom: 'L\'Alarme',
+        emoji: '🔔',
         type: 'elite',
-        recit: 'Un peu de cardio. Tu vas découvrir des poumons que tu croyais décoratifs.',
+        recit: 'Le donjon t\'a repéré. Il faut tenir le rythme jusqu\'à la salle suivante.',
         exigence: { dureeMin: 15, intensiteMin: 2, focus: 'cardio' },
         xpBonus: 60,
       },
       {
-        id: 'tapis_boss',
-        nom: 'LE COUSSIN ANCESTRAL',
-        emoji: '🛑',
+        id: 'e_boss',
+        nom: 'LE GARDIEN DE SEUIL',
+        emoji: '🗿',
         type: 'boss',
-        recit: 'Il t\'a englouti tous les dimanches depuis des années. Aujourd\'hui, tu te lèves.',
+        recit:
+          'Il garde la première porte depuis toujours et n\'a jamais eu à se battre. Personne n\'était venu.',
         exigence: { dureeMin: 20, intensiteMin: 2 },
         xpBonus: 150,
       },
     ],
   },
   {
-    id: 'plaines',
-    nom: 'Les Plaines du Canapé',
-    emoji: '🛋️',
-    couleur: '#60a5fa',
-    intro: 'Un territoire vaste et mou, où beaucoup se sont perdus pour toujours.',
-    niveauConseille: 3,
+    id: 'faille_d',
+    nom: 'Faille de rang D',
+    emoji: '🕳️',
+    rang: 'D',
+    couleur: '#4cc9f0',
+    intro: 'La faille reste ouverte bien plus longtemps qu\'elle ne devrait. Quelque chose la tient.',
+    niveauConseille: 5,
     noeuds: [
       {
-        id: 'plaines_1',
-        nom: 'La Traversée',
-        emoji: '🚶',
+        id: 'd_1',
+        nom: 'La Descente',
+        emoji: '🪜',
         type: 'normal',
-        recit: 'Vingt minutes d\'un pas régulier. Rien d\'héroïque, juste tenu.',
+        recit: 'Vingt minutes vers le bas, à rythme constant. Rien d\'héroïque, juste tenu.',
         exigence: { dureeMin: 20, intensiteMin: 2 },
         xpBonus: 60,
       },
       {
-        id: 'plaines_2',
-        nom: 'Le Mur de Gainage',
+        id: 'd_2',
+        nom: 'Le Couloir Étroit',
         emoji: '🧱',
         type: 'normal',
-        recit: 'Ton ventre a une opinion sur ce projet. Ignore-la.',
+        recit: 'Les murs se resserrent. Le ventre a une opinion sur ce projet : ignore-la.',
         exigence: { dureeMin: 18, intensiteMin: 2, focus: 'gainage' },
         xpBonus: 65,
       },
       {
-        id: 'plaines_3',
-        nom: 'Les Bras Ballants',
-        emoji: '💪',
+        id: 'd_3',
+        nom: 'La Herse Rouillée',
+        emoji: '⛓️',
         type: 'normal',
-        recit: 'Le haut du corps réclame son dû. Il a attendu longtemps.',
+        recit: 'Elle ne s\'ouvre pas toute seule. Le haut du corps réclame son dû.',
         exigence: { dureeMin: 20, intensiteMin: 2, focus: 'force' },
         xpBonus: 70,
       },
       {
-        id: 'plaines_4',
-        nom: 'La Longue Marche',
-        emoji: '🥾',
+        id: 'd_4',
+        nom: 'La Longue Galerie',
+        emoji: '🔦',
         type: 'elite',
-        recit: 'Trente minutes. Le moment où tu découvres si tu tiens la distance.',
+        recit: 'Trente minutes sans embranchement. Le moment où l\'on découvre si l\'on tient la distance.',
         exigence: { dureeMin: 30, intensiteMin: 2 },
         xpBonus: 110,
       },
       {
-        id: 'plaines_boss',
-        nom: 'LA TÉLÉCOMMANDE PERDUE',
-        emoji: '📺',
+        id: 'd_boss',
+        nom: 'LA SENTINELLE DE PIERRE',
+        emoji: '🪨',
         type: 'boss',
-        recit: 'Elle est tombée entre deux coussins. Tu ne la retrouveras qu\'en sueur.',
+        recit: 'Elle ne frappe pas vite. Elle frappe longtemps, et elle n\'est jamais essoufflée.',
         exigence: { dureeMin: 25, intensiteMin: 3 },
         xpBonus: 200,
       },
     ],
   },
   {
-    id: 'foret',
-    nom: 'La Forêt des Courbatures',
-    emoji: '🌲',
-    couleur: '#34d399',
-    intro: 'Ici, chaque marche d\'escalier rappelle ce que tu as fait la veille.',
-    niveauConseille: 6,
+    id: 'donjon_c',
+    nom: 'Donjon de rang C',
+    emoji: '🏚️',
+    rang: 'C',
+    couleur: '#3ddc97',
+    intro:
+      'Premier vrai donjon : plusieurs salles, un noyau au fond, et pas de sortie avant de l\'avoir éteint.',
+    niveauConseille: 10,
     noeuds: [
       {
-        id: 'foret_1',
-        nom: 'Le Sentier Raide',
+        id: 'c_1',
+        nom: 'L\'Escalier Sans Fin',
         emoji: '⛰️',
         type: 'normal',
-        recit: 'Ça monte. C\'est le principe.',
+        recit: 'Ça monte. C\'est le principe des donjons : ils descendent, et pourtant ça monte.',
         exigence: { dureeMin: 25, intensiteMin: 2, focus: 'force' },
         xpBonus: 90,
       },
       {
-        id: 'foret_2',
-        nom: 'La Clairière',
+        id: 'c_2',
+        nom: 'La Salle d\'Eau',
         emoji: '🍃',
         type: 'normal',
-        recit: 'Une pause dans la difficulté : aujourd\'hui, on s\'occupe de la souplesse.',
+        recit:
+          'Une salle calme, sans monstre. Les chasseurs qui la traversent sans s\'arrêter le regrettent plus bas.',
         exigence: { dureeMin: 20, intensiteMin: 1, focus: 'souplesse' },
         xpBonus: 80,
       },
       {
-        id: 'foret_3',
-        nom: 'La Meute',
+        id: 'c_3',
+        nom: 'L\'Essaim',
         emoji: '🐺',
         type: 'normal',
-        recit: 'Du cardio, encore. Ils courent plus vite que toi, mais moins longtemps.',
+        recit: 'Ils courent plus vite que toi. Moins longtemps, en revanche.',
         exigence: { dureeMin: 25, intensiteMin: 3, focus: 'cardio' },
         xpBonus: 95,
       },
       {
-        id: 'foret_4',
-        nom: 'La Nuit Sans Lune',
+        id: 'c_4',
+        nom: 'L\'Extinction des Torches',
         emoji: '🌑',
         type: 'elite',
-        recit: 'Séance longue et sérieuse. Personne ne saura que tu l\'as faite. Sauf toi.',
+        recit: 'Séance longue, dans le noir. Personne ne saura que tu l\'as faite. Sauf toi.',
         exigence: { dureeMin: 35, intensiteMin: 3 },
         xpBonus: 150,
       },
       {
-        id: 'foret_boss',
-        nom: 'LE RÉVEIL DE 6H30',
-        emoji: '⏰',
+        id: 'c_boss',
+        nom: 'LE NOYAU DU DONJON',
+        emoji: '🔴',
         type: 'boss',
-        recit: 'Ton ennemi juré, celui que tu repousses cinq fois par matin. Affronte-le.',
+        recit: 'Il bat au fond de la dernière salle. Tant qu\'il bat, le portail reste ouvert.',
         exigence: { dureeMin: 30, intensiteMin: 3 },
         xpBonus: 280,
       },
     ],
   },
   {
-    id: 'cimes',
-    nom: 'Les Cimes du Souffle',
-    emoji: '🏔️',
-    couleur: '#a78bfa',
-    intro: 'L\'air se raréfie. Les excuses aussi.',
-    niveauConseille: 10,
+    id: 'donjon_b',
+    nom: 'Donjon de rang B',
+    emoji: '🏯',
+    rang: 'B',
+    couleur: '#ffc857',
+    intro: 'L\'air y est plus lourd. Les chasseurs qui en reviennent en parlent peu.',
+    niveauConseille: 15,
     noeuds: [
       {
-        id: 'cimes_1',
-        nom: 'L\'Arête',
-        emoji: '🪨',
+        id: 'b_1',
+        nom: 'L\'Arête de Pierre',
+        emoji: '🪚',
         type: 'normal',
-        recit: 'Étroit, exposé, pas le droit à l\'erreur sur la technique.',
+        recit: 'Étroite, exposée. Aucune place pour une technique approximative.',
         exigence: { dureeMin: 30, intensiteMin: 3, focus: 'gainage' },
         xpBonus: 130,
       },
       {
-        id: 'cimes_2',
-        nom: 'Le Vent Contraire',
+        id: 'b_2',
+        nom: 'Le Vent des Profondeurs',
         emoji: '💨',
         type: 'normal',
-        recit: 'Tout te pousse à redescendre. Continue.',
+        recit: 'Tout te pousse vers la sortie. Continue dans l\'autre sens.',
         exigence: { dureeMin: 30, intensiteMin: 3, focus: 'cardio' },
         xpBonus: 140,
       },
       {
-        id: 'cimes_3',
-        nom: 'Le Camp de Base',
+        id: 'b_3',
+        nom: 'Le Répit',
         emoji: '⛺',
         type: 'normal',
         recit: 'Récupération active. Ça compte autant que le reste, même si c\'est moins glorieux.',
@@ -240,72 +256,157 @@ export const ZONES: Zone[] = [
         xpBonus: 100,
       },
       {
-        id: 'cimes_4',
-        nom: 'L\'Ascension Finale',
+        id: 'b_4',
+        nom: 'La Remontée du Puits',
         emoji: '🧗',
         type: 'elite',
-        recit: 'Quarante minutes, tout en haut de ce que tu sais faire.',
+        recit: 'Quarante minutes, tout en haut de ce que tu sais faire aujourd\'hui.',
         exigence: { dureeMin: 40, intensiteMin: 3 },
         xpBonus: 200,
       },
       {
-        id: 'cimes_boss',
-        nom: 'LE MIROIR DE LA SALLE DE BAIN',
+        id: 'b_boss',
+        nom: 'LE REFLET ARMÉ',
         emoji: '🪞',
         type: 'boss',
-        recit: 'Le seul adversaire qui te connaisse vraiment. Il a beaucoup à dire. Réponds-lui.',
+        recit:
+          'Il a ton visage, ta fatigue et tes excuses. C\'est le seul adversaire qui les connaisse toutes.',
         exigence: { dureeMin: 35, intensiteMin: 3 },
         xpBonus: 380,
       },
     ],
   },
   {
-    id: 'donjon',
-    nom: 'Le Donjon du Parquet',
-    emoji: '🏰',
-    couleur: '#f59e0b',
-    intro: 'La dernière zone. Celle où l\'habitude a définitivement remplacé la motivation.',
-    niveauConseille: 14,
+    id: 'donjon_a',
+    nom: 'Donjon de rang A',
+    emoji: '🏛️',
+    rang: 'A',
+    couleur: '#ff6b35',
+    intro: 'À partir d\'ici, on n\'entre plus par curiosité.',
+    niveauConseille: 20,
     noeuds: [
       {
-        id: 'donjon_1',
-        nom: 'La Herse',
+        id: 'a_1',
+        nom: 'La Grande Herse',
         emoji: '⚔️',
         type: 'normal',
-        recit: 'Force pure. Rien à négocier.',
+        recit: 'Force pure. Rien à négocier avec un mécanisme.',
         exigence: { dureeMin: 35, intensiteMin: 3, focus: 'force' },
         xpBonus: 180,
       },
       {
-        id: 'donjon_2',
-        nom: 'Les Douves',
+        id: 'a_2',
+        nom: 'Les Eaux Noires',
         emoji: '🌊',
         type: 'normal',
-        recit: 'Cardio long. On traverse ou on coule.',
+        recit: 'Cardio long. On traverse ou on coule, et le donjon s\'en moque.',
         exigence: { dureeMin: 35, intensiteMin: 3, focus: 'cardio' },
         xpBonus: 190,
       },
       {
-        id: 'donjon_3',
-        nom: 'La Salle des Gardes',
+        id: 'a_3',
+        nom: 'La Garde Rapprochée',
         emoji: '🛡️',
         type: 'elite',
-        recit: 'Ils sont nombreux et ils ne se fatiguent pas. Toi si. C\'est tout le problème.',
+        recit: 'Ils sont nombreux et ne se fatiguent pas. Toi si : c\'est tout le problème.',
         exigence: { dureeMin: 40, intensiteMin: 3, focus: 'gainage' },
         xpBonus: 260,
       },
       {
-        id: 'donjon_boss',
-        nom: 'LE DOUTE DE NOVEMBRE',
+        id: 'a_boss',
+        nom: 'LE CHEVALIER DE FER',
         emoji: '👑',
         type: 'boss',
-        recit: 'Il n\'a pas de muscles. Il chuchote juste « à quoi bon ». C\'est le boss final.',
+        recit: 'Il attend au bout de la salle du trône. Il attend depuis que tu as commencé.',
         exigence: { dureeMin: 45, intensiteMin: 3 },
-        xpBonus: 600,
+        xpBonus: 450,
+      },
+    ],
+  },
+  {
+    id: 'portail_s',
+    nom: 'Portail de rang S',
+    emoji: '👁️',
+    rang: 'S',
+    couleur: '#b388ff',
+    intro: 'Un portail qui ne se referme pas. Il n\'y en a qu\'un, et il t\'attend depuis le début.',
+    niveauConseille: 25,
+    noeuds: [
+      {
+        id: 's_1',
+        nom: 'Le Silence d\'Avant',
+        emoji: '🕯️',
+        type: 'normal',
+        recit: 'Rien ne bouge, rien n\'attaque. C\'est le pire moment : c\'est là qu\'on renonce.',
+        exigence: { dureeMin: 30, intensiteMin: 2 },
+        xpBonus: 200,
+      },
+      {
+        id: 's_2',
+        nom: 'La Marche des Ombres',
+        emoji: '🌑',
+        type: 'elite',
+        recit: 'Quarante-cinq minutes sans repère. Tu sais déjà que tu peux : c\'est écrit dans ton journal.',
+        exigence: { dureeMin: 45, intensiteMin: 3 },
+        xpBonus: 320,
+      },
+      {
+        id: 's_boss',
+        nom: 'LE SOUVERAIN DU SEUIL',
+        emoji: '🕯️',
+        type: 'boss',
+        recit:
+          'Il n\'a pas de muscles. Il chuchote juste « à quoi bon », depuis le premier jour. Tout le reste n\'était que l\'approche.',
+        exigence: { dureeMin: 45, intensiteMin: 3 },
+        xpBonus: 800,
       },
     ],
   },
 ];
+
+/**
+ * Correspondance entre l'ancienne carte et les portails.
+ *
+ * La première carte filait une métaphore domestique (le Coussin
+ * Ancestral, la Télécommande Perdue) qui n'avait plus rien à voir avec le
+ * Système une fois celui-ci en place. Les salles ont été renommées et
+ * reclassées par rang, mais leur ordre et leur nombre n'ont pas bougé sur
+ * les cinq premières zones : une progression déjà acquise se reporte donc
+ * exactement, au lieu d'être effacée par un simple changement de nom.
+ */
+export const NOEUDS_RENOMMES: Record<string, string> = {
+  tapis_1: 'e_1',
+  tapis_2: 'e_2',
+  tapis_3: 'e_3',
+  tapis_4: 'e_4',
+  tapis_boss: 'e_boss',
+  plaines_1: 'd_1',
+  plaines_2: 'd_2',
+  plaines_3: 'd_3',
+  plaines_4: 'd_4',
+  plaines_boss: 'd_boss',
+  foret_1: 'c_1',
+  foret_2: 'c_2',
+  foret_3: 'c_3',
+  foret_4: 'c_4',
+  foret_boss: 'c_boss',
+  cimes_1: 'b_1',
+  cimes_2: 'b_2',
+  cimes_3: 'b_3',
+  cimes_4: 'b_4',
+  cimes_boss: 'b_boss',
+  donjon_1: 'a_1',
+  donjon_2: 'a_2',
+  donjon_3: 'a_3',
+  donjon_boss: 'a_boss',
+};
+
+/** Reporte une progression enregistrée sous les anciens identifiants. */
+export function convertirNoeudsTermines(termines: string[]): string[] {
+  const connus = new Set(parcours().map((n) => n.id));
+  const convertis = termines.map((id) => NOEUDS_RENOMMES[id] ?? id).filter((id) => connus.has(id));
+  return [...new Set(convertis)];
+}
 
 /** Tous les nœuds, à plat, dans l'ordre où on les rencontre. */
 export function parcours(): Noeud[] {
@@ -340,10 +441,17 @@ export interface AvancementAventure {
 export function avancement(termines: string[]): AvancementAventure {
   const tous = parcours();
   const courant = noeudCourant(termines);
+
+  // On compte les salles réellement présentes sur la carte, pas les
+  // identifiants enregistrés : une carte remaniée laisse des identifiants
+  // orphelins dans la sauvegarde, et les compter afficherait une
+  // progression supérieure à 100 %.
+  const faits = tous.filter((n) => termines.includes(n.id)).length;
+
   return {
     total: tous.length,
-    faits: tous.filter((n) => termines.includes(n.id)).length,
-    progression: tous.length === 0 ? 0 : termines.length / tous.length,
+    faits,
+    progression: tous.length === 0 ? 0 : faits / tous.length,
     zoneCourante: courant ? zoneDuNoeud(courant.id) ?? null : null,
     noeudCourant: courant,
   };

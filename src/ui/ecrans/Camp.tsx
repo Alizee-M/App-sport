@@ -396,7 +396,10 @@ export default function Camp() {
       {aventure.noeudCourant && aventure.zoneCourante ? (
         <>
           <View style={{ height: espace.m }} />
-          <FenetreSysteme titre="Donjon en cours" couleur={aventure.zoneCourante.couleur}>
+          <FenetreSysteme
+            titre={`Portail ouvert · rang ${aventure.zoneCourante.rang}`}
+            couleur={aventure.zoneCourante.couleur}
+          >
             <View style={styles.ligneRecompense}>
               <Text style={styles.emojiRecompense}>{aventure.noeudCourant.emoji}</Text>
               <View style={{ flex: 1 }}>
@@ -410,7 +413,7 @@ export default function Camp() {
               ) : null}
             </View>
             <Bouton
-              titre={aventure.noeudCourant.type === 'boss' ? 'Affronter le boss' : 'Y aller'}
+              titre={aventure.noeudCourant.type === 'boss' ? 'Affronter le boss' : 'Entrer'}
               variante="fantome"
               onPress={() => navigation.navigate('Tirage', { noeudId: aventure.noeudCourant!.id })}
               style={{ marginTop: espace.m }}
@@ -423,7 +426,7 @@ export default function Camp() {
       <View style={styles.compteurs}>
         <Compteur emoji="🔥" valeur={String(serie)} libelle={serie > 1 ? 'jours de suite' : 'jour de suite'} />
         <Compteur emoji="⚔️" valeur={String(seancesTerminees)} libelle="séances" />
-        <Compteur emoji="🗺️" valeur={`${aventure.faits}/${aventure.total}`} libelle="donjons" />
+        <Compteur emoji="🌀" valeur={`${aventure.faits}/${aventure.total}`} libelle="salles" />
       </View>
 
       <NotificationSysteme

@@ -28,6 +28,7 @@ import {
   noeudCourant,
   seanceValideNoeud,
   zoneDuNoeud,
+  convertirNoeudsTermines,
   type Noeud,
   type Zone,
 } from '../moteur/aventure';
@@ -602,6 +603,18 @@ export const useJeu = create<EtatJeu>()(
     {
       name: 'heros-de-salon',
       storage: createJSONStorage(() => AsyncStorage),
+      // 1 : la carte d'aventure est devenue une suite de portails classés
+      // par rang, et ses salles ont changé d'identifiant.
+      version: 1,
+      migrate: (sauvegarde, version) => {
+        const etat = sauvegarde as Partial<EtatJeu>;
+        if (version < 1 && Array.isArray(etat.noeudsTermines)) {
+          // Renommer des salles ne doit pas coûter une progression : les
+          // anciennes se reportent une à une sur les nouvelles.
+          return { ...etat, noeudsTermines: convertirNoeudsTermines(etat.noeudsTermines) };
+        }
+        return etat;
+      },
       // La séance préparée est volontairement hors sauvegarde : au
       // redémarrage on repart d'un tirage neuf plutôt que d'une séance
       // fantôme dont on ne sait plus où on en était.

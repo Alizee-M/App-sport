@@ -248,7 +248,11 @@ function Apercu({
       >
         <Animated.View style={style}>
           <Text style={styles.etiquetteTirage}>
-            {seance.type === 'boss' ? '👹 COMBAT DE BOSS' : seance.type === 'aventure' ? '🗺️ QUÊTE' : '🎲 TIRAGE'}
+            {seance.type === 'boss'
+              ? '👹 COMBAT DE BOSS'
+              : seance.type === 'aventure'
+                ? '🌀 SALLE DE DONJON'
+                : '🎲 TIRAGE'}
           </Text>
           <Text style={styles.titre}>{seance.titre}</Text>
 

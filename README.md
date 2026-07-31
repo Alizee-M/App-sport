@@ -67,7 +67,7 @@ poids à perdre.
 
 ## Ce qui empêche de s'ennuyer
 
-Quatre mécaniques se combinent, chacune attaquant la lassitude par un
+Cinq mécaniques se combinent, chacune attaquant la lassitude par un
 angle différent :
 
 ### 🎲 Le tirage
@@ -138,10 +138,15 @@ ne dit pas quoi faire ce soir. Dans l'aperçu du tirage, l'exercice de
 l'étape en cours porte une mention **⭐ Voie de compétence**, pour ne pas
 le confondre avec le reste du tirage.
 
-### 🗺️ L'aventure
-Vingt-quatre étapes réparties en cinq zones, chacune close par un boss
-(le Coussin Ancestral, le Réveil de 6h30, le Doute de Novembre…). Ça donne
-une raison de s'entraîner *ce soir* plutôt qu'un jour prochain.
+### 🌀 Les portails
+Vingt-sept salles réparties en six donjons, **classés du rang E au rang S
+exactement comme le chasseur** : au niveau 10 on obtient le rang C et on
+entre dans les donjons de rang C. Un donjon au-dessus de son rang reste
+tentable — déconseillé, jamais interdit.
+
+Chaque donjon se clôt sur un boss, du Gardien de Seuil au Souverain du
+Seuil, qui n'a pas de muscles et se contente de chuchoter « à quoi bon ».
+Ça donne une raison de s'entraîner *ce soir* plutôt qu'un jour prochain.
 
 ### ⚡ Et les défis, qui eux ne changent jamais
 Huit épreuves chronométrées à score et record personnel. Ce sont les seuls
@@ -192,7 +197,7 @@ progression.
 
 **Comment les versions sont publiées.** Chaque arrivée de code sur `main`
 déclenche la compilation. Le workflow refuse de produire un APK si la
-vérification des types ou les 151 tests échouent : ce qui est publié a donc
+vérification des types ou les 153 tests échouent : ce qui est publié a donc
 toujours passé ces contrôles. Une release est alors créée
 automatiquement, étiquetée avec la version de `app.json`. Republier la
 même version met à jour l'APK au lieu d'empiler les entrées ; il suffit
@@ -214,7 +219,7 @@ disponible en artefact dans l'onglet **Actions**, le temps de tester.
 ```bash
 npm install
 
-npm test          # 151 tests sur le moteur de jeu
+npm test          # 153 tests sur le moteur de jeu
 npm run typecheck # vérification TypeScript
 npm start         # serveur de développement Expo
 ```
@@ -254,7 +259,7 @@ src/moteur/          logique pure, testée (aucune dépendance UI)
   seance.ts            le tirage, et la mise en séance de la quête du jour
   deroulement.ts       la séance dépliée étape par étape
   progression.ts       XP, niveaux, stats, séries de jours, titres
-  aventure.ts          zones, nœuds, boss
+  aventure.ts          portails classés par rang, salles, boss
   defis.ts             épreuves chronométrées et records
   coach.ts             répliques selon le moment
 
@@ -262,7 +267,7 @@ src/ui/sons.ts       repères sonores de la séance
 
 src/etat/magasin.ts  état persisté sur l'appareil (zustand + AsyncStorage)
 src/ui/              thème, composants, écrans
-tests/               151 tests node:test
+tests/               153 tests node:test
 ```
 
 ### Ce que les tests vérifient
@@ -275,7 +280,11 @@ Les garde-fous du tirage passent avant tout le reste :
 - une même graine redonne exactement la même séance, ce qui permet
   d'échanger une seule carte sans que le reste bouge ;
 - l'historique récent fait bien reculer les exercices déjà faits ;
-- une séance tirée pour une étape d'aventure valide toujours cette étape ;
+- une séance tirée pour une salle de donjon valide toujours cette salle ;
+- le rang d'un donjon correspond au rang qu'a le chasseur au niveau
+  conseillé, et les six portails couvrent E → S dans l'ordre ;
+- une progression enregistrée sous les anciens noms de salles se reporte
+  intégralement, sans qu'un renommage coûte quoi que ce soit ;
 - la durée annoncée égale **toujours** celle du déroulé réel, cartes du
   jour comprises — c'est l'invariant qui empêche l'affichage de mentir ;
 - toute carte marquée « appliquée » modifie effectivement la séance, et

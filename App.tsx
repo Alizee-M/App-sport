@@ -40,7 +40,7 @@ const theme: Theme = {
 
 const ICONES: Record<keyof ParamsOnglets, string> = {
   Camp: '👤',
-  Aventure: '🗺️',
+  Aventure: '🌀',
   Tirer: '🎲',
   Defis: '⚡',
   Journal: '📖',

@@ -39,9 +39,13 @@ export default function Aventure() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.titre}>La carte</Text>
+      <Text style={styles.titre}>Les portails</Text>
       <Text style={styles.sousTitre}>
-        {etat.faits} étapes franchies sur {etat.total}
+        {etat.faits} salles nettoyées sur {etat.total}
+      </Text>
+      <Text style={styles.explication}>
+        Les donjons sont classés du rang E au rang S, comme toi. Tu peux en tenter un
+        au-dessus de ton rang : c'est déconseillé, jamais interdit.
       </Text>
       <View style={{ marginTop: espace.m }}>
         <Jauge progression={etat.progression} couleur={couleurs.succes} />
@@ -53,12 +57,20 @@ export default function Aventure() {
 
         return (
           <View key={zone.id}>
-            <TitreSection>{`${zone.emoji} ${zone.nom}`}</TitreSection>
+            <TitreSection
+              action={
+                <Puce couleur={zone.couleur} fond={`${zone.couleur}22`}>
+                  {`RANG ${zone.rang}`}
+                </Puce>
+              }
+            >
+              {`${zone.emoji} ${zone.nom}`}
+            </TitreSection>
 
             {!ouverte ? (
               <Panneau style={styles.zoneFermee}>
                 <Text style={styles.texteFerme}>
-                  🔒 Termine la zone précédente pour ouvrir celle-ci.
+                  🔒 Le portail précédent doit être refermé avant que celui-ci s'ouvre.
                 </Text>
               </Panneau>
             ) : (
@@ -66,7 +78,7 @@ export default function Aventure() {
                 <Text style={styles.introZone}>{zone.intro}</Text>
                 {finie ? (
                   <View style={styles.bandeauFinie}>
-                    <Text style={styles.texteFinie}>✅ Zone entièrement nettoyée</Text>
+                    <Text style={styles.texteFinie}>✅ Portail refermé</Text>
                   </View>
                 ) : null}
 
@@ -92,8 +104,8 @@ export default function Aventure() {
       {!courant ? (
         <Panneau style={{ marginTop: espace.xl }} couleurBordure={couleurs.or}>
           <Text style={styles.finAventure}>
-            🏅 Tu as terminé toute la carte. Les séances libres et les défis continuent, eux,
-            de compter.
+            🏅 Tous les portails sont refermés, jusqu'au rang S. Les séances libres, les
+            voies de compétence et les défis, eux, continuent de compter.
           </Text>
         </Panneau>
       ) : null}
@@ -168,8 +180,8 @@ function LigneNoeud({
             {courant ? (
               <Text style={[styles.noeudAppel, { color: zone.couleur }]}>
                 {niveau < zone.niveauConseille
-                  ? `Conseillé à partir du niveau ${zone.niveauConseille} — tu peux tenter quand même.`
-                  : 'Touche pour tirer la séance de cette étape.'}
+                  ? `Donjon de rang ${zone.rang}, conseillé à partir du niveau ${zone.niveauConseille}. Tu peux entrer quand même.`
+                  : 'Touche pour tirer la séance de cette salle.'}
               </Text>
             ) : null}
           </>
@@ -183,6 +195,7 @@ const styles = StyleSheet.create({
   ecran: { flex: 1, backgroundColor: couleurs.fond },
   titre: { ...texte.titre, color: couleurs.texte },
   sousTitre: { ...texte.petit, color: couleurs.texteDoux, marginTop: espace.xs },
+  explication: { ...texte.minuscule, color: couleurs.texteFaible, marginTop: espace.s, lineHeight: 16 },
 
   introZone: { ...texte.petit, color: couleurs.texteDoux, fontStyle: 'italic', lineHeight: 19 },
   zoneFermee: { alignItems: 'center' },
