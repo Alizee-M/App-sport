@@ -101,6 +101,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.apk.outputs.version }}
+          # Sans cela, le tag est posé sur la branche par défaut du dépôt
+          # et non sur le commit réellement compilé : on ne pourrait plus
+          # repartir du tag pour reproduire l'APK publié.
+          target_commitish: ${{ github.sha }}
           name: Héros de Salon v${{ steps.apk.outputs.version }}
           make_latest: true
           files: heros-de-salon.apk
